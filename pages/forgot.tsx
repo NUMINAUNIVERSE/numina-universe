@@ -8,7 +8,7 @@ export default function Forgot() {
 
   const handleForgot = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`重設密碼信已寄出至：${email}（請串接API）`);
+    alert(`已寄送重設密碼連結到：${email}（請串接API）`);
   };
 
   return (
@@ -16,7 +16,7 @@ export default function Forgot() {
       <Navbar />
       <main className="flex flex-col items-center justify-center flex-grow px-4 py-16">
         <div className="bg-[#161e2d] rounded-2xl shadow-xl p-8 w-full max-w-md">
-          <h1 className="text-2xl font-bold text-[#FFD700] mb-6 text-center">忘記密碼</h1>
+          <h1 className="text-2xl font-bold text-[#FFD700] mb-6 text-center">重設密碼</h1>
           <form onSubmit={handleForgot} className="space-y-5">
             <div>
               <label className="block text-base font-semibold mb-1">Email</label>
@@ -33,11 +33,11 @@ export default function Forgot() {
               type="submit"
               className="w-full bg-[#FFD700] text-[#0d1827] font-bold rounded-lg py-2 mt-2 hover:bg-[#fff9e3] transition"
             >
-              寄送重設密碼連結
+              發送重設連結
             </button>
           </form>
           <div className="flex justify-between items-center mt-6">
-            <Link href="/login" className="text-[#FFD700] underline">回登入頁</Link>
+            <Link href="/login" className="text-[#FFD700] underline">回登入</Link>
           </div>
         </div>
       </main>

@@ -30,14 +30,12 @@ const fakeBlogeBooks = [
     price: 0,
     mode: "subscribe"
   },
-  // ...可再多加假資料
 ];
 
 export default function BlogeBookPage() {
   const [tab, setTab] = useState(0);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  // 篩選展示資料
   const displayed = fakeBlogeBooks.filter(
     (b) => !selectedTag || b.tags.includes(selectedTag)
   );

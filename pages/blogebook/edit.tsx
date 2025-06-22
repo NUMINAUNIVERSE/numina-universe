@@ -1,328 +1,328 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-type BlockType = "text" | "image" | "carousel" | "sticker" | "audio" | "pdf";
-type Block = {
-  type: BlockType;
-  files?: File[];
-  value?: string;
-  preview?: string[];
-};
-
-const defaultTags = ["AI", "宇宙", "漫畫", "知識", "心靈", "設計"];
-const DRAFT_KEY = "numina_blogebook_draft";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function BlogeBookEdit() {
+  const [coverImg, setCoverImg] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
-  const [cover, setCover] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [mainCat, setMainCat] = useState("小說");
-  const [tags, setTags] = useState<string[]>(["AI", "宇宙"]);
+  const [desc, setDesc] = useState("");
+  const [blocks, setBlocks] = useState<any[]>([]);
+  const [blockValue, setBlockValue] = useState("");
+  const [blockType, setBlockType] = useState<"text" | "image">("text");
+  const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [payMode, setPayMode] = useState("free");
-  const [payPrice, setPayPrice] = useState("");
-  const [showStickerModal, setShowStickerModal] = useState(false);
-  const [showDraftMsg, setShowDraftMsg] = useState(false);
-  const [showLoadDraft, setShowLoadDraft] = useState(false);
+  const [price, setPrice] = useState<number>(0);
+  const [chargeMode, setChargeMode] = useState("free");
+  const [showPreview, setShowPreview] = useState(false);
 
-  // 假資料：WonderLand 貼圖串流
-  const wonderStickers = [
-    { name: "爆萌柴犬", url: "/stickers/dog1.png" },
-    { name: "Q版宇宙人", url: "/stickers/alien1.png" },
-    { name: "NUMINA 金色LOGO", url: "/stickers/numina_gold.png" }
-  ];
-
-  // 草稿自動載入
-  useEffect(() => {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    if (saved) setShowLoadDraft(true);
-  }, []);
-
-  function handleLoadDraft() {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    if (saved) {
-      try {
-        const d = JSON.parse(saved);
-        setTitle(d.title || "");
-        setMainCat(d.mainCat || "");
-        setTags(d.tags || []);
-        setBlocks(d.blocks || []);
-        setPayMode(d.payMode || "free");
-        setPayPrice(d.payPrice || "");
-        setCoverPreview(d.coverPreview || null);
-        setShowLoadDraft(false);
-      } catch {}
+  // 處理封面圖片上傳
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const url = URL.createObjectURL(e.target.files[0]);
+      setCoverImg(url);
     }
-  }
+  };
 
-  // 封面上傳
-  function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files?.[0]) {
-      setCover(e.target.files[0]);
-      setCoverPreview(URL.createObjectURL(e.target.files[0]));
+  // 處理PDF電子書上傳
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPdfFile(e.target.files[0]);
     }
-  }
+  };
 
-  // 標籤
-  function addTag() {
-    if (newTag && !tags.includes(newTag)) {
+  // 處理音檔上傳
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAudioFile(e.target.files[0]);
+    }
+  };
+
+  // 增加內容積木（文字、圖片）
+  const addBlock = () => {
+    if (blockValue.trim() === "") return;
+    setBlocks([...blocks, { type: blockType, value: blockValue }]);
+    setBlockValue("");
+  };
+
+  // 處理標籤增加
+  const addTag = () => {
+    if (newTag.trim() !== "" && !tags.includes(newTag)) {
       setTags([...tags, newTag]);
       setNewTag("");
     }
-  }
-  function removeTag(tag: string) {
-    setTags(tags.filter(t => t !== tag));
-  }
+  };
 
-  // 積木內容
-  function addBlock(type: BlockType) {
-    setBlocks([...blocks, { type }]);
-  }
-  function updateBlock(idx: number, update: Partial<Block>) {
-    setBlocks(blocks.map((b, i) => (i === idx ? { ...b, ...update } : b)));
-  }
-  function removeBlock(idx: number) {
-    setBlocks(blocks.filter((_, i) => i !== idx));
-  }
-  function moveBlock(idx: number, dir: -1 | 1) {
-    if ((dir === -1 && idx === 0) || (dir === 1 && idx === blocks.length - 1)) return;
-    const copy = [...blocks];
-    const [item] = copy.splice(idx, 1);
-    copy.splice(idx + dir, 0, item);
-    setBlocks(copy);
-  }
-  function handleFileUpload(idx: number, files: FileList | null, isMulti = false) {
-    if (!files) return;
-    const arr = Array.from(files);
-    updateBlock(idx, {
-      files: arr,
-      preview: arr.map(f => URL.createObjectURL(f))
-    });
-  }
-  // 貼圖積木
-  function addStickerToBlock(idx: number, url: string) {
-    updateBlock(idx, { preview: [url], value: url });
-    setShowStickerModal(false);
-  }
+  // 預存草稿、發布、預覽
+  const handleDraft = () => {
+    alert("草稿已暫存（MVP示意）");
+  };
 
-  // 儲存草稿
-  function saveDraft() {
-    const draft = {
-      title, coverPreview, mainCat, tags, blocks, payMode, payPrice
-    };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    setShowDraftMsg(true);
-    setTimeout(() => setShowDraftMsg(false), 2000);
-  }
-
-  // 預覽功能(可跳新頁or暫存state)
-  function previewDraft() {
-    alert("暫時demo：正式可跳新頁帶內容");
-  }
-
-  // 發布
-  function publish() {
-    alert("發布功能開發中！（正式串API後自動上架）");
-  }
+  const handlePublish = () => {
+    alert("作品已發布！（MVP示意）");
+  };
 
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
       <Navbar />
-      <div className="max-w-3xl w-full mx-auto flex-1 py-10 px-4">
-        <h2 className="text-3xl font-bold mb-6 text-[#ffd700]">BlogeBook 編輯器</h2>
-        {showLoadDraft && (
-          <div className="mb-5 p-4 rounded-lg bg-[#181f32] border border-[#ffd700] flex items-center gap-3">
-            <span>偵測到本機草稿，是否繼續編輯？</span>
-            <button className="px-3 py-1 rounded bg-[#ffd700] text-[#181f32] font-bold" onClick={handleLoadDraft}>載入草稿</button>
-            <button className="px-3 py-1 rounded bg-[#ffd70022] text-[#ffd700]" onClick={() => setShowLoadDraft(false)}>忽略</button>
-          </div>
-        )}
-
-        {/* 標題 */}
-        <div className="mb-4 flex gap-3 items-center">
-          <label className="text-[#ffd700] min-w-[62px]">標題</label>
-          <input
-            className="flex-1 rounded px-4 py-2 bg-[#162040] border border-[#ffd700] text-xl"
-            value={title} onChange={e => setTitle(e.target.value)}
-            placeholder="請輸入BlogeBook標題"
-          />
-        </div>
-        {/* 封面 */}
-        <div className="mb-4 flex gap-3 items-center">
-          <label className="text-[#ffd700] min-w-[62px]">封面</label>
-          <input type="file" accept="image/*" onChange={handleCover} />
-          {coverPreview && (
-            <img src={coverPreview} alt="cover" className="h-20 rounded-lg shadow border border-[#ffd700]" />
-          )}
-        </div>
-        {/* 主分類 */}
-        <div className="mb-4 flex gap-3 items-center">
-          <label className="text-[#ffd700] min-w-[62px]">主題分類</label>
-          <select className="rounded px-2 py-1 bg-[#162040] border border-[#ffd700] text-white"
-            value={mainCat} onChange={e => setMainCat(e.target.value)}>
-            <option>小說</option><option>散文</option><option>攝影</option>
-            <option>漫畫</option><option>知識</option><option>心靈</option>
-          </select>
-        </div>
-        {/* 標籤 */}
-        <div className="mb-4 flex gap-3 items-center flex-wrap">
-          <label className="text-[#ffd700] min-w-[62px]">標籤</label>
-          <div className="flex gap-2 flex-wrap">
-            {tags.map(tag => (
-              <span key={tag} className="bg-[#ffd70025] text-[#ffd700] rounded px-3 py-1 text-base flex items-center">
-                {tag}
-                <button className="ml-1 text-white/60" onClick={() => removeTag(tag)}>✕</button>
-              </span>
-            ))}
-            <input className="rounded px-2 py-1 w-28 bg-[#162040] border border-[#ffd700]" placeholder="新增標籤"
-              value={newTag} onChange={e => setNewTag(e.target.value)}
-              onKeyDown={e => (e.key === "Enter" ? addTag() : null)} />
-            <button onClick={addTag} className="px-3 py-1 border border-[#ffd700] rounded text-[#ffd700] bg-[#ffd70009]">＋</button>
-          </div>
-        </div>
-
-        {/* 積木內容編輯區 */}
-        <div className="bg-[#1b2239] rounded-2xl p-6 mb-4">
-          <div className="flex gap-2 flex-wrap mb-5">
-            <button className="add-block-btn" onClick={() => addBlock("text")}>＋文字段落</button>
-            <button className="add-block-btn" onClick={() => addBlock("image")}>＋單張圖片</button>
-            <button className="add-block-btn" onClick={() => addBlock("carousel")}>＋多圖橫滑</button>
-            <button className="add-block-btn" onClick={() => addBlock("sticker")}>＋貼圖</button>
-            <button className="add-block-btn" onClick={() => addBlock("audio")}>＋語音</button>
-            <button className="add-block-btn" onClick={() => addBlock("pdf")}>＋PDF電子書</button>
-          </div>
-          <style>{`
-            .add-block-btn{background:linear-gradient(90deg,#ffd700 65%,#42caff 100%);color:#23265b;border:none;border-radius:9px;padding:6px 18px;font-size:1rem;font-weight:bold;cursor:pointer;}
-          `}</style>
-          {blocks.map((block, idx) => (
-            <div key={idx} className="block mb-4 p-4 rounded-xl bg-[#111826] relative">
-              <label className="text-[#ffd700] font-bold block mb-1">積木{idx+1}（{block.type}）</label>
-              <div className="absolute top-2 right-2 flex gap-1">
-                <button onClick={() => moveBlock(idx, -1)} className="px-2 py-0.5 bg-[#ffd70033] rounded" title="上移">↑</button>
-                <button onClick={() => moveBlock(idx, 1)} className="px-2 py-0.5 bg-[#ffd70033] rounded" title="下移">↓</button>
-                <button onClick={() => removeBlock(idx)} className="px-2 py-0.5 bg-red-600 text-white rounded" title="刪除">✖</button>
-              </div>
-              {/* 積木本體 */}
-              {block.type === "text" && (
-                <textarea
-                  className="w-full rounded bg-[#191f2c] text-white p-2"
-                  rows={3}
-                  placeholder="請輸入文字段落"
-                  value={block.value || ""}
-                  onChange={e => updateBlock(idx, { value: e.target.value })}
-                />
-              )}
-              {block.type === "image" && (
-                <div>
-                  <input type="file" accept="image/*" onChange={e => handleFileUpload(idx, e.target.files)} />
-                  {block.preview && block.preview[0] && (
-                    <img src={block.preview[0]} className="w-44 mt-2 rounded" alt="" />
-                  )}
-                </div>
-              )}
-              {block.type === "carousel" && (
-                <div>
-                  <input type="file" accept="image/*" multiple onChange={e => handleFileUpload(idx, e.target.files, true)} />
-                  <div className="flex gap-2 mt-2 overflow-x-auto">
-                    {block.preview && block.preview.map((src, i) => (
-                      <img key={i} src={src} className="h-24 rounded" alt="" />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {block.type === "sticker" && (
-                <div>
-                  <button onClick={() => setShowStickerModal(true)} className="px-3 py-1 bg-[#ffd700] text-[#181f32] rounded font-bold mb-2">從WonderLand選擇貼圖</button>
-                  {block.preview && block.preview[0] && (
-                    <img src={block.preview[0]} className="h-16 mt-1" alt="sticker" />
-                  )}
-                  {showStickerModal && (
-                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-                      <div className="bg-[#181f32] p-7 rounded-2xl max-w-xs w-full">
-                        <div className="text-lg font-bold text-[#ffd700] mb-2">WonderLand 貼圖</div>
-                        <div className="flex gap-3 flex-wrap">
-                          {wonderStickers.map((s, i) => (
-                            <div key={i} className="flex flex-col items-center">
-                              <img src={s.url} alt={s.name} className="h-14 rounded-lg shadow cursor-pointer border-2 border-transparent hover:border-[#ffd700]" onClick={() => addStickerToBlock(idx, s.url)} />
-                              <span className="text-xs text-[#ffd700] mt-1">{s.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <button onClick={() => setShowStickerModal(false)} className="mt-4 w-full px-3 py-2 bg-[#ffd700] text-[#181f32] rounded font-bold">關閉</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {block.type === "audio" && (
-                <div>
-                  <input type="file" accept="audio/*" onChange={e => handleFileUpload(idx, e.target.files)} />
-                  {block.preview && block.preview[0] && (
-                    <audio controls src={block.preview[0]} className="mt-2" />
-                  )}
-                </div>
-              )}
-              {block.type === "pdf" && (
-                <div>
-                  <input type="file" accept="application/pdf" onChange={e => handleFileUpload(idx, e.target.files)} />
-                  {block.preview && block.preview[0] && (
-                    <iframe src={block.preview[0]} className="w-full h-64 rounded-lg mt-2" title="pdf-preview" />
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* 收費模式 */}
-        <div className="mb-4 flex gap-3 items-center">
-          <label className="text-[#ffd700] min-w-[62px]">收費模式</label>
-          <div className="pay-mode-box flex gap-2 items-center">
-            <select
-              className="pay-mode-select rounded bg-[#162040] border border-[#ffd700] text-white"
-              value={payMode}
-              onChange={e => setPayMode(e.target.value)}
-            >
-              <option value="free">免費公開</option>
-              <option value="sub">訂閱帳號解鎖</option>
-              <option value="single">單篇付費</option>
-              <option value="tip">打賞開放</option>
-            </select>
-            {payMode === "single" && (
-              <input
-                type="number"
-                className="pay-price-input rounded border border-[#ffd700] bg-[#162040] text-[#ffd700] px-2 py-1"
-                placeholder="單篇售價(元)"
-                min={1}
-                value={payPrice}
-                onChange={e => setPayPrice(e.target.value)}
-              />
+      <div className="max-w-3xl w-full mx-auto flex-1 py-8 px-4">
+        <h1 className="text-3xl font-bold text-[#ffd700] mb-4">BlogeBook 編輯器</h1>
+        <div className="space-y-7 bg-[#181f32] p-6 rounded-2xl shadow-lg">
+          {/* 封面上傳 */}
+          <div>
+            <label className="font-bold block mb-1">封面圖片</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="mb-2"
+              onChange={handleCoverChange}
+            />
+            {coverImg && (
+              <img src={coverImg} alt="封面" className="w-44 h-60 object-cover rounded-lg mt-2" />
             )}
-            <div className="pay-desc text-[#ffd700ad] ml-3">
-              {{
-                free: "所有讀者皆可閱讀。",
-                sub: "僅訂閱你帳號的粉絲可完整閱讀。",
-                single: "須購買此BlogeBook才可閱讀內容。",
-                tip: "所有人可閱讀，可自由打賞支持。"
-              }[payMode]}
+          </div>
+          {/* 作品標題 */}
+          <div>
+            <label className="font-bold block mb-1">作品標題</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full bg-[#283045] text-white px-4 py-2 rounded-lg"
+              placeholder="請輸入BlogeBook標題"
+            />
+          </div>
+          {/* 作品簡介 */}
+          <div>
+            <label className="font-bold block mb-1">作品簡介</label>
+            <textarea
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              className="w-full bg-[#283045] text-white px-4 py-2 rounded-lg"
+              placeholder="請簡述本篇BlogeBook內容"
+            />
+          </div>
+          {/* 電子書PDF上傳 */}
+          <div>
+            <label className="font-bold block mb-1">電子書PDF檔案（選填）</label>
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfChange}
+              className="mb-2"
+            />
+            {pdfFile && <span className="text-[#ffd700]">{pdfFile.name}</span>}
+          </div>
+          {/* 音檔上傳 */}
+          <div>
+            <label className="font-bold block mb-1">語音音檔（選填）</label>
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={handleAudioChange}
+              className="mb-2"
+            />
+            {audioFile && <span className="text-[#ffd700]">{audioFile.name}</span>}
+          </div>
+          {/* 積木內容編輯 */}
+          <div>
+            <label className="font-bold block mb-2">內容積木</label>
+            <div className="flex gap-3 mb-2">
+              <select
+                className="bg-[#283045] text-white rounded px-2 py-1"
+                value={blockType}
+                onChange={e => setBlockType(e.target.value as any)}
+              >
+                <option value="text">文字</option>
+                <option value="image">圖片網址</option>
+              </select>
+              <input
+                type="text"
+                value={blockValue}
+                onChange={e => setBlockValue(e.target.value)}
+                className="flex-1 bg-[#283045] text-white px-3 py-1 rounded"
+                placeholder={blockType === "text" ? "請輸入文字" : "請輸入圖片網址"}
+              />
+              <button
+                onClick={addBlock}
+                className="bg-[#ffd700] text-[#0d1a2d] font-bold px-5 py-1 rounded-xl hover:scale-105 transition"
+              >
+                加入
+              </button>
             </div>
+            {/* 展示已加入內容 */}
+            <div className="space-y-3">
+              {blocks.map((b, i) =>
+                b.type === "text" ? (
+                  <div key={i} className="bg-[#ffd7000a] p-3 rounded-lg text-white">{b.value}</div>
+                ) : (
+                  <img key={i} src={b.value} alt="" className="w-full rounded-lg" />
+                )
+              )}
+            </div>
+          </div>
+          {/* 標籤管理 */}
+          <div>
+            <label className="font-bold block mb-1">主題標籤</label>
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {tags.map((tag, i) => (
+                <span
+                  key={i}
+                  className="bg-[#ffd70022] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={e => setNewTag(e.target.value)}
+                className="bg-[#283045] text-white px-3 py-1 rounded"
+                placeholder="新增標籤"
+              />
+              <button
+                onClick={addTag}
+                className="bg-[#ffd700] text-[#0d1a2d] font-bold px-4 py-1 rounded-xl"
+              >
+                加入
+              </button>
+            </div>
+          </div>
+          {/* 收費設定 */}
+          <div>
+            <label className="font-bold block mb-1">收費模式</label>
+            <div className="flex gap-4 mb-2">
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  value="free"
+                  checked={chargeMode === "free"}
+                  onChange={() => setChargeMode("free")}
+                  className="accent-[#ffd700]"
+                />
+                免費
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  value="onepay"
+                  checked={chargeMode === "onepay"}
+                  onChange={() => setChargeMode("onepay")}
+                  className="accent-[#ffd700]"
+                />
+                單篇收費
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  value="subscribe"
+                  checked={chargeMode === "subscribe"}
+                  onChange={() => setChargeMode("subscribe")}
+                  className="accent-[#ffd700]"
+                />
+                訂閱帳號
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  value="reward"
+                  checked={chargeMode === "reward"}
+                  onChange={() => setChargeMode("reward")}
+                  className="accent-[#ffd700]"
+                />
+                打賞
+              </label>
+            </div>
+            {chargeMode === "onepay" && (
+              <div className="flex items-center gap-2">
+                <span>金額</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={price}
+                  onChange={e => setPrice(Number(e.target.value))}
+                  className="bg-[#283045] text-white px-3 py-1 rounded w-24"
+                />
+                <span className="text-[#ffd700]">元</span>
+              </div>
+            )}
+          </div>
+          {/* 功能按鈕 */}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="px-5 py-2 bg-[#ffd70088] text-[#0d1a2d] rounded-xl font-bold hover:scale-105 transition"
+            >
+              預覽
+            </button>
+            <button
+              onClick={handleDraft}
+              className="px-5 py-2 bg-[#ffd70055] text-[#0d1a2d] rounded-xl font-bold hover:scale-105 transition"
+            >
+              預存草稿
+            </button>
+            <button
+              onClick={handlePublish}
+              className="px-5 py-2 bg-[#ffd700] text-[#0d1a2d] rounded-xl font-bold hover:scale-105 transition"
+            >
+              發布
+            </button>
+            <Link href="/blogebook">
+              <span className="px-5 py-2 rounded-xl bg-[#181f32] border border-[#ffd70044] text-[#ffd700] font-bold hover:underline cursor-pointer ml-2">
+                取消
+              </span>
+            </Link>
           </div>
         </div>
 
-        {/* 編輯器底部按鈕 */}
-        <div className="editor-btns mt-8 flex gap-6 flex-wrap">
-          <button onClick={saveDraft} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#42caff] to-[#ffd700] text-[#23265b] font-bold text-lg shadow">儲存草稿</button>
-          <button onClick={previewDraft} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#fffde4] text-[#23265b] font-bold text-lg shadow">預覽</button>
-          <button onClick={publish} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#42caff] text-[#23265b] font-bold text-lg shadow">發布</button>
-        </div>
-        {showDraftMsg && (
-          <div className="mt-5 text-[#ffd700] font-bold text-lg">草稿已暫存於本機，下次可自動載入！</div>
+        {/* 預覽模式 */}
+        {showPreview && (
+          <div className="fixed top-0 left-0 w-full h-full bg-[#0d1a2de6] z-50 flex flex-col items-center justify-center px-2">
+            <div className="bg-[#181f32] rounded-2xl p-8 max-w-lg w-full shadow-xl overflow-y-auto">
+              <h2 className="text-2xl font-bold text-[#ffd700] mb-4">{title || "預覽標題"}</h2>
+              {coverImg && (
+                <img src={coverImg} alt="預覽封面" className="w-full h-64 object-cover rounded-lg mb-3" />
+              )}
+              <p className="mb-2">{desc || "預覽簡介"}</p>
+              {pdfFile && (
+                <span className="block text-[#ffd700] mb-1">電子書PDF：{pdfFile.name}</span>
+              )}
+              {audioFile && (
+                <span className="block text-[#ffd700] mb-1">語音音檔：{audioFile.name}</span>
+              )}
+              {blocks.map((b, i) =>
+                b.type === "text" ? (
+                  <div key={i} className="bg-[#ffd7000a] p-3 rounded-lg my-2">{b.value}</div>
+                ) : (
+                  <img key={i} src={b.value} alt="" className="w-full rounded-lg my-2" />
+                )
+              )}
+              <div className="flex gap-2 flex-wrap mt-2">
+                {tags.map((tag, i) => (
+                  <span
+                    key={i}
+                    className="bg-[#ffd70022] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+              <button
+                className="mt-5 px-5 py-2 bg-[#ffd700] text-[#0d1a2d] font-bold rounded-xl"
+                onClick={() => setShowPreview(false)}
+              >
+                關閉預覽
+              </button>
+            </div>
+          </div>
         )}
       </div>
       <Footer />
     </div>
   );
 }
-

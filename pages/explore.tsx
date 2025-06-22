@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import Link from "next/link";
 
 const tabList = [
   { key: "blogebook", label: "BlogeBook" },
@@ -15,10 +16,7 @@ export default function Explore() {
 
   // 假資料（後續可串API）
   const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
-  const blogeBookList = [/* ...卡片資料 */];
-  const wonderLandList = [/* ...卡片資料 */];
-  const stickerList = [/* ...貼圖包 */];
-  const authorList = [/* ...熱門作者 */];
+  // (假資料省略...)
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -85,7 +83,7 @@ export default function Explore() {
   );
 }
 
-// 以假資料舉例，細節可根據你最後設計UI/卡片呈現
+// 下方細部元件（不變、只補alt）
 function BlogeBookExploreCardList() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -95,7 +93,7 @@ function BlogeBookExploreCardList() {
           <div className="font-bold text-xl">BlogeBook 標題 {i}</div>
           <div className="text-[#FFD700] text-sm mb-1">#小說 #心靈</div>
           <div className="flex items-center gap-2 text-gray-400 text-sm">
-            <img src="/demo/author1.jpg" className="w-7 h-7 rounded-full" />
+            <img src="/demo/author1.jpg" className="w-7 h-7 rounded-full" alt="作者頭像" />
             <span>作者名{ i }</span>
             <span className="ml-2 text-[#FFD700]">訂閱</span>
           </div>
@@ -114,7 +112,7 @@ function WonderLandExploreCardList() {
           <div className="font-bold text-lg">WonderLand 作品 {i}</div>
           <div className="text-[#FFD700] text-xs mb-1">#插畫 #IP角色</div>
           <div className="flex items-center gap-2 text-gray-400 text-xs">
-            <img src="/demo/author2.jpg" className="w-7 h-7 rounded-full" />
+            <img src="/demo/author2.jpg" className="w-7 h-7 rounded-full" alt="作者頭像" />
             <span>作者名{i}</span>
             <span className="ml-2 text-[#FFD700]">訂閱</span>
           </div>

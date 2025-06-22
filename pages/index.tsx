@@ -24,8 +24,8 @@ export default function HomePage() {
   const [wlIndex, setWLIndex] = useState(0);
 
   // 橫向滑動小功能
-  const scrollBlog = dir => setBlogIndex((prev) => Math.max(0, Math.min(prev + dir, hotBlogeBooks.length - 1)));
-  const scrollWL = dir => setWLIndex((prev) => Math.max(0, Math.min(prev + dir, hotWonderLand.length - 1)));
+  const scrollBlog = (dir: number) => setBlogIndex((prev) => Math.max(0, Math.min(prev + dir, hotBlogeBooks.length - 1)));
+  const scrollWL = (dir: number) => setWLIndex((prev) => Math.max(0, Math.min(prev + dir, hotWonderLand.length - 1)));
 
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
@@ -129,4 +129,3 @@ export default function HomePage() {
     </div>
   );
 }
-

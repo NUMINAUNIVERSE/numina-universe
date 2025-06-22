@@ -1,7 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useRef } from "react";
-import { FiSend, FiImage, FiMusic, FiSmile } from "react-icons/fi";
+import { FiImage, FiMusic, FiSmile } from "react-icons/fi";
+import Link from "next/link";
 
 export default function GroupChatRoom() {
   const [msg, setMsg] = useState("");
@@ -14,12 +15,8 @@ export default function GroupChatRoom() {
   ];
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // 自動滾到底部
-  // useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    // 送訊息API
     setMsg("");
   }
 
