@@ -1,160 +1,201 @@
 import React, { useState } from "react";
-import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+
+type WorkType = "插畫" | "漫畫" | "貼圖";
+
+const DRAFT_KEY = "numina_wonderland_draft";
 
 export default function WonderlandEdit() {
+  const [type, setType] = useState<WorkType>("插畫");
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [tags, setTags] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [pdf, setPdf] = useState<File | null>(null);
-  const [stickers, setStickers] = useState<File[]>([]);
-  const [mode, setMode] = useState("免費");
+  const [images, setImages] = useState<{file: File, url: string}[]>([]);
+  const [pdf, setPdf] = useState<{file: File, url: string} | null>(null);
+  const [stickerPack, setStickerPack] = useState<{file: File, url: string}[]>([]);
+  const [pricing, setPricing] = useState("免費");
   const [price, setPrice] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [showDraftMsg, setShowDraftMsg] = useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setImages(Array.from(e.target.files));
+  // 讀取本機草稿
+  React.useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const d = JSON.parse(saved);
+        setType(d.type || "插畫");
+        setTitle(d.title || "");
+        setDesc(d.desc || "");
+        setImages(d.images || []);
+        setPdf(d.pdf || null);
+        setStickerPack(d.stickerPack || []);
+        setPricing(d.pricing || "免費");
+        setPrice(d.price || "");
+      } catch {}
+    }
+  }, []);
+
+  // 圖片上傳預覽
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files).map(file => ({
+      file,
+      url: URL.createObjectURL(file)
+    }));
+    setImages([...images, ...files]);
   };
-  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) setPdf(e.target.files[0]);
+  // 貼圖包上傳預覽
+  const handleStickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files).map(file => ({
+      file,
+      url: URL.createObjectURL(file)
+    }));
+    setStickerPack([...stickerPack, ...files]);
   };
-  const handleStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setStickers(Array.from(e.target.files));
+  // PDF漫畫書
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setPdf({
+      file: e.target.files[0],
+      url: URL.createObjectURL(e.target.files[0])
+    });
   };
+
+  // 儲存草稿
+  const saveDraft = () => {
+    const draft = { type, title, desc, images, pdf, stickerPack, pricing, price };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    setShowDraftMsg(true);
+    setTimeout(() => setShowDraftMsg(false), 2000);
+  };
+
+  // 預覽
+  const preview = () => setPreviewMode(true);
+  // 發布
+  const publish = () => alert("已發布！(DEMO)");
 
   return (
-    <div style={{ color: "#fff", background: "#10182a", minHeight: "100vh", padding: 48 }}>
-      <div style={{ maxWidth: 820, margin: "0 auto", background: "#20294a", borderRadius: 20, padding: 32 }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24 }}>WonderLand 創作編輯器</h2>
-        <div style={{ marginBottom: 18 }}>
-          <label>標題：</label>
-          <input
-            type="text"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            style={{ color: "#fff", background: "#283c5b", border: "1px solid #304770", borderRadius: 7, padding: 8, width: "100%" }}
-          />
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>描述：</label>
-          <textarea
-            value={desc}
-            onChange={e => setDesc(e.target.value)}
-            style={{ color: "#fff", background: "#283c5b", border: "1px solid #304770", borderRadius: 7, padding: 8, width: "100%" }}
-          />
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>分類標籤：</label>
-          <input
-            type="text"
-            value={tags}
-            onChange={e => setTags(e.target.value)}
-            style={{ color: "#fff", background: "#283c5b", border: "1px solid #304770", borderRadius: 7, padding: 8, width: "100%" }}
-            placeholder="例：插畫,漫畫,貼圖"
-          />
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>插畫／漫畫圖上傳：</label>
-          <input type="file" multiple accept="image/*" onChange={handleImageUpload} />
-          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            {images.map((file, i) => (
-              <img
-                key={i}
-                src={URL.createObjectURL(file)}
-                alt={`上傳圖片${i + 1}`}
-                style={{ width: 88, height: 88, borderRadius: 8, objectFit: "cover" }}
-              />
-            ))}
-          </div>
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>漫畫書 PDF 上傳：</label>
-          <input type="file" accept="application/pdf" onChange={handlePdfUpload} />
-          {pdf && <span style={{ color: "#8ccfff", marginLeft: 12 }}>{pdf.name}</span>}
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>創作貼圖包（可多檔）：</label>
-          <input type="file" multiple accept="image/*" onChange={handleStickerUpload} />
-          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            {stickers.map((file, i) => (
-              <img
-                key={i}
-                src={URL.createObjectURL(file)}
-                alt={`上傳貼圖${i + 1}`}
-                style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover", border: "2px solid #FFD700" }}
-              />
-            ))}
-          </div>
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label>收費模式：</label>
-          <select value={mode} onChange={e => setMode(e.target.value)} style={{ color: "#fff", background: "#283c5b", border: "1px solid #304770", borderRadius: 7, padding: 8 }}>
-            <option value="免費">免費</option>
-            <option value="單篇付費">單篇付費</option>
-            <option value="訂閱制">訂閱制</option>
-            <option value="打賞">打賞</option>
-          </select>
-          {(mode === "單篇付費" || mode === "訂閱制") && (
-            <input
-              type="number"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-              placeholder="請輸入金額"
-              style={{ marginLeft: 12, color: "#fff", background: "#283c5b", border: "1px solid #304770", borderRadius: 7, padding: 8, width: 120 }}
-            />
-          )}
-        </div>
-        <div style={{ marginTop: 20, display: "flex", gap: 16 }}>
-          <button style={{ color: "#fff", background: "#1976d2", border: "none", borderRadius: 6, padding: "8px 24px", fontWeight: 600 }} onClick={() => setShowPreview(true)}>
-            預覽
-          </button>
-          <button style={{ color: "#fff", background: "#FFD700", border: "none", borderRadius: 6, padding: "8px 24px", fontWeight: 600 }}>
-            發布
-          </button>
-          <button style={{ color: "#fff", background: "#404d68", border: "none", borderRadius: 6, padding: "8px 24px", fontWeight: 600 }}>
-            儲存草稿
-          </button>
-          <Link href="/wonderland">
-            <button style={{ color: "#fff", background: "#30394a", border: "none", borderRadius: 6, padding: "8px 24px", fontWeight: 600 }}>
-              取消
-            </button>
-          </Link>
-        </div>
-        {showPreview && (
-          <div style={{ marginTop: 36, padding: 24, background: "#151e33", borderRadius: 10 }}>
-            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>預覽：</h3>
-            <div style={{ color: "#8ccfff" }}>{title}</div>
-            <div style={{ marginBottom: 6 }}>{desc}</div>
-            <div>
-              {images.map((file, i) => (
-                <img
-                  key={i}
-                  src={URL.createObjectURL(file)}
-                  alt={`預覽圖片${i + 1}`}
-                  style={{ width: 96, height: 96, borderRadius: 10, marginRight: 7, objectFit: "cover" }}
-                />
-              ))}
+    <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
+      <Navbar />
+      <div className="max-w-2xl w-full mx-auto flex-1 py-10 px-2 sm:px-4">
+        <h2 className="text-3xl font-bold mb-6 text-[#ffd700]">WonderLand 作品編輯器</h2>
+        {!previewMode ? (
+          <>
+            {/* 作品類型 */}
+            <div className="mb-4">
+              <label className="font-bold mr-3 text-[#ffd700]">作品類型：</label>
+              <select className="rounded px-3 py-1 bg-[#162040] text-white" value={type} onChange={e => setType(e.target.value as WorkType)}>
+                <option value="插畫">插畫</option>
+                <option value="漫畫">漫畫</option>
+                <option value="貼圖">貼圖</option>
+              </select>
             </div>
-            <div style={{ marginTop: 6 }}>
-              標籤：{tags}
-              {pdf && <div style={{ color: "#FFD700" }}>PDF: {pdf.name}</div>}
+            {/* 標題 */}
+            <div className="mb-4">
+              <label className="font-bold mr-3 text-[#ffd700]">標題：</label>
+              <input className="rounded px-3 py-2 w-full bg-[#162040] border border-[#ffd700] text-white" value={title} onChange={e=>setTitle(e.target.value)} />
             </div>
-            <div>
-              {stickers.length > 0 && <span>貼圖包({stickers.length})</span>}
-              <div style={{ display: "flex", gap: 6 }}>
-                {stickers.map((file, i) => (
-                  <img
-                    key={i}
-                    src={URL.createObjectURL(file)}
-                    alt={`預覽貼圖${i + 1}`}
-                    style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #FFD700" }}
-                  />
-                ))}
+            {/* 簡介 */}
+            <div className="mb-4">
+              <label className="font-bold mr-3 text-[#ffd700]">作品簡介：</label>
+              <textarea className="rounded px-3 py-2 w-full bg-[#162040] border border-[#ffd700] text-white" rows={3} value={desc} onChange={e=>setDesc(e.target.value)} />
+            </div>
+            {/* 插畫/漫畫圖像上傳 */}
+            {(type === "插畫" || type === "漫畫") && (
+              <div className="mb-4">
+                <label className="font-bold text-[#ffd700]">插畫/漫畫圖像：</label>
+                <input type="file" accept="image/*" multiple className="mb-1" onChange={handleImageChange}/>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {images.map((f,i)=>
+                    <img key={i} src={f.url} alt="" className="w-24 h-24 object-cover rounded-lg border-2 border-[#ffd70055] bg-[#181f32]" />
+                  )}
+                </div>
               </div>
+            )}
+            {/* PDF漫畫書上傳 */}
+            {type === "漫畫" && (
+              <div className="mb-4">
+                <label className="font-bold text-[#ffd700]">PDF漫畫電子書（僅限閱讀，不可下載）：</label>
+                <input type="file" accept="application/pdf" className="mb-1" onChange={handlePdfChange}/>
+                {pdf && (
+                  <iframe src={pdf.url} className="w-full h-60 rounded-lg mt-2 border border-[#ffd700]" title="pdf-preview" />
+                )}
+              </div>
+            )}
+            {/* 貼圖上傳 */}
+            {type === "貼圖" && (
+              <div className="mb-4">
+                <label className="font-bold text-[#ffd700]">貼圖包上傳：</label>
+                <input type="file" accept="image/*" multiple className="mb-1" onChange={handleStickerChange}/>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {stickerPack.map((f,i)=>
+                    <img key={i} src={f.url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#ffd70044] bg-[#181f32]" />
+                  )}
+                </div>
+              </div>
+            )}
+            {/* 收費設定 */}
+            <div className="mb-4">
+              <label className="font-bold mr-3 text-[#ffd700]">收費方式：</label>
+              <select className="rounded px-3 py-1 bg-[#162040] text-white" value={pricing} onChange={e=>setPricing(e.target.value)}>
+                <option>免費</option>
+                <option>單篇收費</option>
+                <option>訂閱制</option>
+                <option>打賞贊助</option>
+              </select>
+              {(pricing==="單篇收費" || pricing==="訂閱制") &&
+                <input className="ml-2 px-3 py-1 rounded bg-[#162040] border border-[#ffd700] text-white w-32" type="number" min="1" value={price} onChange={e=>setPrice(e.target.value)} placeholder="金額(元)" />
+              }
+            </div>
+            {/* 操作按鈕 */}
+            <div className="flex gap-3 mt-8">
+              <button className="px-6 py-2 bg-gradient-to-r from-[#ffd700] to-[#fffde4] rounded-xl text-[#181f32] font-bold hover:scale-105 shadow"
+                onClick={preview}>預覽</button>
+              <button className="px-6 py-2 border border-[#ffd700] rounded-xl text-[#ffd700] font-bold hover:bg-[#222]"
+                onClick={saveDraft}>儲存草稿</button>
+              <button className="px-6 py-2 bg-[#ff5aac] rounded-xl text-white font-bold hover:bg-[#ffaddc]"
+                onClick={publish}>發布</button>
+            </div>
+            {showDraftMsg && (
+              <div className="mt-4 text-[#ffd700] font-bold text-base">草稿已暫存於本機，下次可自動載入！</div>
+            )}
+          </>
+        ) : (
+          // 預覽模式
+          <div className="bg-[#192243] rounded-2xl p-6 mt-2">
+            <div className="text-2xl font-bold mb-2">{title}</div>
+            <div className="mb-2 text-[#ffd700]">{type}</div>
+            <div className="mb-2">{desc}</div>
+            {(type === "插畫" || type === "漫畫") && (
+              <div className="flex flex-wrap gap-3 mb-2">
+                {images.map((f,i) =>
+                  <img key={i} src={f.url} className="w-24 h-24 object-cover rounded-lg border-2 border-[#ffd70055] bg-[#181f32]" />
+                )}
+              </div>
+            )}
+            {type === "漫畫" && pdf && (
+              <iframe src={pdf.url} className="w-full h-60 rounded-lg mt-2 border border-[#ffd700]" title="pdf-preview" />
+            )}
+            {type === "貼圖" && stickerPack.length>0 && (
+              <div className="mb-2 flex flex-wrap gap-3">
+                {stickerPack.map((f,i)=>
+                  <img key={i} src={f.url} className="w-16 h-16 object-cover rounded-lg border border-[#ffd70044] bg-[#181f32]" />
+                )}
+              </div>
+            )}
+            <div className="mt-3 text-[#ffd700] font-bold">{pricing} {((pricing==="單篇收費"||pricing==="訂閱制") && price) ? `NT$${price}` : ""}</div>
+            <div className="flex gap-3 mt-8">
+              <button className="px-6 py-2 bg-[#ffd700] rounded-xl text-[#181f32] font-bold hover:bg-[#fffde4]"
+                onClick={()=>setPreviewMode(false)}>返回編輯</button>
+              <button className="px-6 py-2 bg-[#ff5aac] rounded-xl text-white font-bold hover:bg-[#ffaddc]"
+                onClick={publish}>發布</button>
             </div>
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
