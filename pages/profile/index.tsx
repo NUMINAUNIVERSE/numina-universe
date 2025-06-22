@@ -159,7 +159,7 @@ export default function ProfilePage() {
                   ? "bg-[#FFD700] text-[#1a2436]"
                   : "bg-[#1a2436] text-[#FFD700]"
               }`}
-              onClick={() => setTab(t.key as any)}
+              onClick={() => setTab(t.key as "blogebooks" | "wonderlands" | "favorites" | "stickers")}
             >
               {t.label}
             </button>
