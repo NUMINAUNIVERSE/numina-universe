@@ -3,13 +3,19 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 
+// 定義內容積木型別
+type Block = {
+  type: "text" | "image";
+  value: string;
+};
+
 export default function BlogeBookEdit() {
   const [coverImg, setCoverImg] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [blocks, setBlocks] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
   const [blockValue, setBlockValue] = useState("");
   const [blockType, setBlockType] = useState<"text" | "image">("text");
   const [tags, setTags] = useState<string[]>([]);
@@ -133,7 +139,7 @@ export default function BlogeBookEdit() {
               <select
                 className="bg-[#283045] text-white rounded px-2 py-1"
                 value={blockType}
-                onChange={e => setBlockType(e.target.value as any)}
+                onChange={e => setBlockType(e.target.value as "text" | "image")}
               >
                 <option value="text">文字</option>
                 <option value="image">圖片網址</option>
