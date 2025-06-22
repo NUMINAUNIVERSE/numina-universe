@@ -1,7 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
-import Link from "next/link";
+
+// Link 沒用到，已移除
 
 const tabList = [
   { key: "blogebook", label: "BlogeBook" },

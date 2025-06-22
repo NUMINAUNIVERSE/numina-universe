@@ -1,8 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useRef } from "react";
-import { FiSend, FiImage, FiMusic, FiSmile } from "react-icons/fi";
-import Link from "next/link";
+import { FiImage, FiMusic, FiSmile } from "react-icons/fi";
 
 export default function PrivateChatRoom() {
   const [msg, setMsg] = useState("");

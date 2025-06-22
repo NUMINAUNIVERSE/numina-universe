@@ -2,7 +2,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useRef } from "react";
 import { FiImage, FiMusic, FiSmile } from "react-icons/fi";
-import Link from "next/link";
 
 export default function GroupChatRoom() {
   const [msg, setMsg] = useState("");
