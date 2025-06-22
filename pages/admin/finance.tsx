@@ -1,8 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Link from "next/link";
 
 export default function AdminFinance() {
-  // 假收益資料
   const summary = {
     totalRevenue: 120000,
     creatorPayout: 90000,
@@ -21,7 +21,7 @@ export default function AdminFinance() {
       <div className="max-w-4xl mx-auto px-4 py-12 w-full">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
           <div className="text-2xl font-bold text-[#FFD700] mb-4">收益管理</div>
-          <a href="/admin" className="text-[#FFD700] underline">回管理首頁</a>
+          <Link href="/admin" className="text-[#FFD700] underline">回管理首頁</Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-[#161e2d] rounded-xl p-6 text-center">

@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -71,7 +72,7 @@ export default function Signup() {
             </button>
           </form>
           <div className="flex justify-between items-center mt-6">
-            <a href="/login" className="text-[#FFD700] underline">已有帳號？登入</a>
+            <Link href="/login" className="text-[#FFD700] underline">已有帳號？登入</Link>
           </div>
         </div>
       </main>

@@ -1,20 +1,19 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Google 登入（未串API，點擊可模擬動作）
   const handleGoogleLogin = () => {
-    alert("Google 登入（之後串接 Supabase 或 Firebase）");
+    alert("Google 一鍵登入（之後串接 Supabase 或 Firebase）");
   };
 
-  // 信箱密碼登入（未串API）
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`帳號：${email}\n密碼：${password}\n（之後串接驗證API）`);
+    alert(`Email：${email}\n密碼：${password}\n（之後串接登入API）`);
   };
 
   return (
@@ -61,8 +60,8 @@ export default function Login() {
             </button>
           </form>
           <div className="flex justify-between items-center mt-6">
-            <a href="/signup" className="text-[#FFD700] underline">還沒有帳號？註冊</a>
-            <a href="/forgot" className="text-sm text-gray-300 hover:text-[#FFD700] underline">忘記密碼？</a>
+            <Link href="/signup" className="text-[#FFD700] underline">還沒註冊？</Link>
+            <Link href="/forgot" className="text-[#FFD700] underline">忘記密碼？</Link>
           </div>
         </div>
       </main>

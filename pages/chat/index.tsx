@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function ChatHome() {
   const [tab, setTab] = useState<"group" | "dm">("group");
@@ -37,14 +38,18 @@ function GroupChatList() {
       <div className="font-bold text-[#FFD700] text-lg mb-4">我的群組聊天室</div>
       <ul className="space-y-3">
         <li>
-          <a href="/chat/group/1" className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-            NUMINA 宇宙創作者群組 <span className="ml-2 text-sm text-[#FFD700]">99+ 未讀</span>
-          </a>
+          <Link href="/chat/group/1" legacyBehavior>
+            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+              NUMINA 宇宙創作者群組 <span className="ml-2 text-sm text-[#FFD700]">99+ 未讀</span>
+            </a>
+          </Link>
         </li>
         <li>
-          <a href="/chat/group/2" className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-            WonderLand 畫師討論區
-          </a>
+          <Link href="/chat/group/2" legacyBehavior>
+            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+              WonderLand 畫師討論區
+            </a>
+          </Link>
         </li>
       </ul>
     </div>
@@ -56,14 +61,18 @@ function DMChatList() {
       <div className="font-bold text-[#FFD700] text-lg mb-4">私人訊息</div>
       <ul className="space-y-3">
         <li>
-          <a href="/chat/dm/andy" className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-            Andy（男神鐵粉） <span className="ml-2 text-xs text-[#FFD700]">2 則新訊息</span>
-          </a>
+          <Link href="/chat/dm/andy" legacyBehavior>
+            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+              Andy（男神鐵粉） <span className="ml-2 text-xs text-[#FFD700]">2 則新訊息</span>
+            </a>
+          </Link>
         </li>
         <li>
-          <a href="/chat/dm/julia" className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-            Julia（插畫家）
-          </a>
+          <Link href="/chat/dm/julia" legacyBehavior>
+            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+              Julia（插畫家）
+            </a>
+          </Link>
         </li>
       </ul>
     </div>

@@ -1,56 +1,30 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useState } from "react";
+import Link from "next/link";
 
 export default function AdminAnnounce() {
-  // 假資料
-  const [announcements, setAnnouncements] = useState([
-    { id: 1, title: "NUMINA UNIVERSE 即將上線測試！", date: "2025-07-01" },
-    { id: 2, title: "平台新功能：原創藍勾勾認證上線", date: "2025-07-02" }
-  ]);
-  const [newTitle, setNewTitle] = useState("");
-
-  const addAnnouncement = () => {
-    if (newTitle.trim() !== "") {
-      setAnnouncements([{ id: Date.now(), title: newTitle, date: new Date().toISOString().split("T")[0] }, ...announcements]);
-      setNewTitle("");
-    }
-  };
-
-  const deleteAnnouncement = (id: number) => {
-    setAnnouncements(announcements.filter((a) => a.id !== id));
-  };
-
+  const announceList = [
+    { id: 1, title: "平台正式啟動公告", date: "2025-07-01", content: "NUMINA UNIVERSE 現正熱烈上線，歡迎創作者加入！" },
+    { id: 2, title: "6/30系統維護通知", date: "2025-06-30", content: "本平台將於6/30 23:00~02:00進行例行維護，請提前儲存創作。" }
+  ];
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-12 w-full">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
           <div className="text-2xl font-bold text-[#FFD700] mb-4">公告管理</div>
-          <a href="/admin" className="text-[#FFD700] underline">回管理首頁</a>
+          <Link href="/admin" className="text-[#FFD700] underline">回管理首頁</Link>
         </div>
-        <div className="bg-[#161e2d] rounded-xl p-6 mb-6 shadow-lg">
-          <div className="font-bold text-lg text-[#FFD700] mb-4">新增公告</div>
-          <div className="flex gap-4">
-            <input
-              type="text"
-              className="w-full px-4 py-2 rounded-lg bg-[#0d1827] text-white border border-[#FFD700]/40 focus:outline-none focus:ring-2 focus:ring-[#FFD700]"
-              placeholder="輸入公告標題..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-            />
-            <button className="bg-[#FFD700] text-[#0d1827] font-bold px-6 py-2 rounded-lg hover:bg-[#fff3a3] transition"
-              onClick={addAnnouncement}
-            >發佈</button>
-          </div>
-        </div>
-        <div className="bg-[#161e2d] rounded-xl p-6 shadow-lg">
-          <div className="font-bold text-lg text-[#FFD700] mb-4">現有公告</div>
+        <div className="bg-[#161e2d] rounded-xl p-6 shadow-lg mb-6">
+          <div className="font-bold text-lg text-[#FFD700] mb-4">公告列表</div>
           <ul>
-            {announcements.map(a => (
-              <li key={a.id} className="flex items-center justify-between border-b border-[#FFD700]/10 py-2">
-                <span>{a.title} <span className="text-xs text-gray-400 ml-2">{a.date}</span></span>
-                <button className="text-[#F44336] underline text-sm" onClick={() => deleteAnnouncement(a.id)}>刪除</button>
+            {announceList.map(a => (
+              <li key={a.id} className="mb-6 border-b border-[#FFD700]/20 pb-3">
+                <div className="text-lg font-bold">{a.title}</div>
+                <div className="text-xs text-gray-400 mb-2">{a.date}</div>
+                <div className="mb-2">{a.content}</div>
+                <button className="text-[#FFD700] underline text-sm mr-2">編輯</button>
+                <button className="text-red-500 underline text-sm">刪除</button>
               </li>
             ))}
           </ul>
