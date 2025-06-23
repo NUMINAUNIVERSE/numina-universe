@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -10,12 +10,10 @@ type Block = {
   preview?: string[];
 };
 
-const defaultTags = ["AI", "宇宙", "漫畫", "知識", "心靈", "設計"];
 const DRAFT_KEY = "numina_blogebook_draft";
 
 export default function BlogeBookEdit() {
   const [title, setTitle] = useState("");
-  const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [mainCat, setMainCat] = useState("小說");
   const [tags, setTags] = useState<string[]>(["AI", "宇宙"]);
@@ -60,7 +58,6 @@ export default function BlogeBookEdit() {
   // 封面上傳
   function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files?.[0]) {
-      setCover(e.target.files[0]);
       setCoverPreview(URL.createObjectURL(e.target.files[0]));
     }
   }
@@ -301,28 +298,44 @@ export default function BlogeBookEdit() {
               />
             )}
             <div className="pay-desc text-[#ffd700ad] ml-3">
-              {{
+              {({
                 free: "所有讀者皆可閱讀。",
                 sub: "僅訂閱你帳號的粉絲可完整閱讀。",
                 single: "須購買此BlogeBook才可閱讀內容。",
-                tip: "所有人可閱讀，可自由打賞支持。"
-              }[payMode]}
+                tip: "所有人可閱讀，可自由打賞支持。",
+              } as Record<string, string>)[payMode]}
             </div>
           </div>
         </div>
 
         {/* 編輯器底部按鈕 */}
         <div className="editor-btns mt-8 flex gap-6 flex-wrap">
-          <button onClick={saveDraft} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#42caff] to-[#ffd700] text-[#23265b] font-bold text-lg shadow">儲存草稿</button>
-          <button onClick={previewDraft} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#fffde4] text-[#23265b] font-bold text-lg shadow">預覽</button>
-          <button onClick={publish} className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#42caff] text-[#23265b] font-bold text-lg shadow">發布</button>
+          <button
+            onClick={saveDraft}
+            className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#42caff] to-[#ffd700] text-[#23265b] font-bold text-lg shadow"
+          >
+            儲存草稿
+          </button>
+          <button
+            onClick={previewDraft}
+            className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#fffde4] text-[#23265b] font-bold text-lg shadow"
+          >
+            預覽
+          </button>
+          <button
+            onClick={publish}
+            className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#42caff] text-[#23265b] font-bold text-lg shadow"
+          >
+            發布
+          </button>
         </div>
         {showDraftMsg && (
-          <div className="mt-5 text-[#ffd700] font-bold text-lg">草稿已暫存於本機，下次可自動載入！</div>
+          <div className="mt-5 text-[#ffd700] font-bold text-lg">
+            草稿已暫存於本機，下次可自動載入！
+          </div>
         )}
       </div>
       <Footer />
     </div>
   );
 }
-

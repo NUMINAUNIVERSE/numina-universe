@@ -1,7 +1,7 @@
 import React from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useRouter } from "next/router";
+// import { useRouter } from "next/router"; // ← 這行可刪除
 
 // 假資料，可改成API獲取
 const dummyBook = {
@@ -23,7 +23,7 @@ const dummyBook = {
 };
 
 export default function BlogeBookReadPage() {
-  const router = useRouter();
+  // const router = useRouter(); // ← 這行可刪除
   // const { id } = router.query; // 未來可根據id載入
   const b = dummyBook;
 
