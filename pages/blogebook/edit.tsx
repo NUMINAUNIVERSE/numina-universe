@@ -90,7 +90,8 @@ export default function BlogeBookEdit() {
     copy.splice(idx + dir, 0, item);
     setBlocks(copy);
   }
-  function handleFileUpload(idx: number, files: FileList | null, _isMulti = false) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleFileUpload(idx: number, files: FileList | null, isMulti = false) {
     if (!files) return;
     const arr = Array.from(files);
     updateBlock(idx, {
