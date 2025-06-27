@@ -32,7 +32,7 @@ export default function BlogeBookPage() {
   useEffect(() => {
     async function fetchBlogeBooks() {
       setLoading(true);
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from("works")
         .select("*")
         .eq("type", "blogebook"); // 只抓 type = blogebook
@@ -42,7 +42,7 @@ export default function BlogeBookPage() {
       } else if (data) {
         // 保證 tags 一定是 array，其他欄位照你的資料表即可
         setBlogeBooks(
-          data.map((item: any) => ({
+          (data as BlogeBook[]).map(item => ({
             ...item,
             tags: item.tags || [],
           }))
