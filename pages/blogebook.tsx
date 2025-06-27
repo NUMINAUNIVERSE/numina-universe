@@ -36,7 +36,7 @@ export default function BlogeBookPage() {
         .from("works")
         .select("*")
         .eq("type", "blogebook"); // 只抓 type = blogebook
-            console.log("Supabase拉到的data:", data, error); // ⭐ 加這行
+      console.log("Supabase data:", data, error); // ⭐ 加這行
       if (error) {
         alert("資料讀取失敗：" + error.message);
       } else if (data) {
