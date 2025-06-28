@@ -30,6 +30,7 @@ export default function BlogeBookEdit() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const router = useRouter();
+  const [desc, setDesc] = useState("");
 
   const wonderStickers = [
     { name: "爆萌柴犬", url: "/stickers/dog1.png" },
