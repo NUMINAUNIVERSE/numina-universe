@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/router";
 
 type BlockType = "text" | "image" | "carousel" | "sticker" | "audio" | "pdf";
 type Block = {
@@ -14,6 +16,7 @@ const DRAFT_KEY = "numina_blogebook_draft";
 
 export default function BlogeBookEdit() {
   const [title, setTitle] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [mainCat, setMainCat] = useState("小說");
   const [tags, setTags] = useState<string[]>(["AI", "宇宙"]);
@@ -24,8 +27,10 @@ export default function BlogeBookEdit() {
   const [showStickerModal, setShowStickerModal] = useState(false);
   const [showDraftMsg, setShowDraftMsg] = useState(false);
   const [showLoadDraft, setShowLoadDraft] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const router = useRouter();
 
-  // 假資料：WonderLand 貼圖串流
   const wonderStickers = [
     { name: "爆萌柴犬", url: "/stickers/dog1.png" },
     { name: "Q版宇宙人", url: "/stickers/alien1.png" },
@@ -55,9 +60,10 @@ export default function BlogeBookEdit() {
     }
   }
 
-  // 封面上傳
+  // 封面上傳預覽
   function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files?.[0]) {
+      setCoverFile(e.target.files[0]);
       setCoverPreview(URL.createObjectURL(e.target.files[0]));
     }
   }
@@ -115,14 +121,78 @@ export default function BlogeBookEdit() {
     setTimeout(() => setShowDraftMsg(false), 2000);
   }
 
-  // 預覽功能(可跳新頁or暫存state)
+  // 預覽功能
   function previewDraft() {
     alert("暫時demo：正式可跳新頁帶內容");
   }
 
+  // 上傳檔案到 Supabase Storage，回傳公開網址
+  async function uploadToStorage(file: File, folder: string) {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${fileExt}`;
+    const { error } = await supabase.storage
+      .from("covers")  // bucket名稱，可依需求調整
+      .upload(fileName, file, { upsert: true });
+    if (error) {
+      setMsg("檔案上傳失敗：" + error.message);
+      return "";
+    }
+    const url = supabase.storage.from("covers").getPublicUrl(fileName).data.publicUrl;
+    return url;
+  }
+
   // 發布
-  function publish() {
-    alert("發布功能開發中！（正式串API後自動上架）");
+  async function publish() {
+    setLoading(true);
+    setMsg("");
+
+    // 1. 上傳封面圖片
+    let coverUrl = "";
+    if (coverFile) {
+      coverUrl = await uploadToStorage(coverFile, "cover");
+    }
+
+    // 2. 上傳所有 blocks 內的檔案（圖片/音檔/PDF…），替換 blocks 的 value/preview 成公開網址
+    const uploadBlockFiles = async (b: Block, idx: number): Promise<Block> => {
+      if (!b.files || b.files.length === 0) return b;
+      const urls = [];
+      for (let i = 0; i < b.files.length; i++) {
+        const url = await uploadToStorage(b.files[i], `block${idx}`);
+        urls.push(url);
+      }
+      return {
+        ...b,
+        value: urls.length === 1 ? urls[0] : undefined,
+        preview: urls,
+        files: undefined // 儲存到 DB 不要放本地 File 物件
+      };
+    };
+    const realBlocks = [];
+    for (let i = 0; i < blocks.length; i++) {
+      realBlocks.push(await uploadBlockFiles(blocks[i], i));
+    }
+
+    // 3. 組裝完整內容，寫入資料庫
+    const payload = {
+      title,
+      cover: coverUrl,
+      main_cat: mainCat,
+      tags,
+      pay_mode: payMode,
+      pay_price: payPrice ? parseInt(payPrice) : 0,
+      blocks: realBlocks,
+      type: "blogebook",
+      created_at: new Date(),
+    };
+
+    const { error } = await supabase.from("works").insert([payload]);
+    if (error) {
+      setMsg("發佈失敗：" + error.message);
+    } else {
+      setMsg("發佈成功！");
+      setTimeout(() => router.push("/blogebook"), 1500);
+    }
+    setLoading(false);
   }
 
   return (
@@ -181,7 +251,9 @@ export default function BlogeBookEdit() {
           </div>
         </div>
 
-        {/* 積木內容編輯區 */}
+        {/* 積木內容編輯區（原樣保留） */}
+        {/* ...原有 blocks 編輯器 ... (保留你的所有設計) */}
+
         <div className="bg-[#1b2239] rounded-2xl p-6 mb-4">
           <div className="flex gap-2 flex-wrap mb-5">
             <button className="add-block-btn" onClick={() => addBlock("text")}>＋文字段落</button>
@@ -314,22 +386,31 @@ export default function BlogeBookEdit() {
           <button
             onClick={saveDraft}
             className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#42caff] to-[#ffd700] text-[#23265b] font-bold text-lg shadow"
+            type="button"
           >
             儲存草稿
           </button>
           <button
             onClick={previewDraft}
             className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#fffde4] text-[#23265b] font-bold text-lg shadow"
+            type="button"
           >
             預覽
           </button>
           <button
             onClick={publish}
             className="px-8 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] to-[#42caff] text-[#23265b] font-bold text-lg shadow"
+            type="button"
+            disabled={loading}
           >
-            發布
+            {loading ? "發佈中..." : "發布"}
           </button>
         </div>
+        {msg && (
+          <div className="mt-5 text-[#ffd700] font-bold text-lg">
+            {msg}
+          </div>
+        )}
         {showDraftMsg && (
           <div className="mt-5 text-[#ffd700] font-bold text-lg">
             草稿已暫存於本機，下次可自動載入！

@@ -6,18 +6,22 @@ import { supabase } from "@/lib/supabaseClient"; // ⭐ 新增 supabase 連線
 const tabList = ["熱門", "最新", "已追蹤"];
 const tags = ["小說", "散文", "知識", "漫畫", "AI", "設計", "商業"];
 
-// ⭐ 定義型別（對應你資料表的欄位）
+// ⭐ 定義型別（對應你資料表的欄位，已統一 pay_mode/pay_price 等）
 interface BlogeBook {
   id: string;
   title: string;
-  author: string;
-  verified: boolean;
+  author_id?: string;
   cover: string;
   tags: string[];
-  desc: string;
-  subscribe: boolean;
-  price: number;
-  mode: "onepay" | "subscribe" | "reward";
+  main_cat?: string;
+  pay_mode: "free" | "sub" | "single" | "tip";
+  pay_price: number;
+  verified?: boolean;
+  subscribe?: boolean;
+  desc?: string;
+  created_at?: string;
+  blocks?: any[];
+  type: string;
 }
 
 export default function BlogeBookPage() {
@@ -40,11 +44,14 @@ export default function BlogeBookPage() {
       if (error) {
         alert("資料讀取失敗：" + error.message);
       } else if (data) {
-        // 保證 tags 一定是 array，其他欄位照你的資料表即可
+        // 保證 tags/pay_mode/pay_price/blocks 一定正確
         setBlogeBooks(
           (data as BlogeBook[]).map(item => ({
             ...item,
             tags: item.tags || [],
+            pay_mode: item.pay_mode || "free",
+            pay_price: item.pay_price || 0,
+            blocks: item.blocks || [],
           }))
         );
       }
@@ -130,7 +137,7 @@ export default function BlogeBookPage() {
                     <span className="ml-2 inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>
                   )}
                 </div>
-                <span className="text-[#ffd700] font-semibold mb-1">{b.author}</span>
+                {/* <span className="text-[#ffd700] font-semibold mb-1">{b.author}</span> */}
                 <p className="text-white/80 mb-2">{b.desc}</p>
                 <div className="flex gap-2 flex-wrap mb-3">
                   {b.tags.map((tag, i) => (
@@ -139,11 +146,13 @@ export default function BlogeBookPage() {
                     </span>
                   ))}
                 </div>
-                {/* 收費模式 */}
+                {/* 收費模式（新版 schema 對齊） */}
                 <div className="flex gap-3 items-center mt-auto">
-                  {b.mode === "onepay" && <span className="text-[#ffd700] font-bold">單篇 ${b.price}</span>}
-                  {b.mode === "subscribe" && <span className="text-[#ffd700] font-bold">訂閱制</span>}
-                  {b.mode === "reward" && <span className="text-[#ffd700] font-bold">打賞</span>}
+                  {b.pay_mode === "single" && <span className="text-[#ffd700] font-bold">單篇 ${b.pay_price}</span>}
+                  {b.pay_mode === "sub" && <span className="text-[#ffd700] font-bold">訂閱制</span>}
+                  {b.pay_mode === "free" && <span className="text-[#ffd700] font-bold">免費</span>}
+                  {b.pay_mode === "tip" && <span className="text-[#ffd700] font-bold">打賞</span>}
+                  {/* 訂閱相關 */}
                   {!b.subscribe && (
                     <button className="bg-[#ffd700] text-[#181f32] font-bold px-5 py-2 rounded-xl shadow hover:scale-105 transition">
                       訂閱作者
