@@ -146,11 +146,15 @@ export default function BlogeBookEdit() {
     setLoading(true);
     setMsg("");
 
+      //檢查封面檔案
+    console.log("封面檔案", coverFile);  // ⭐️ 這是第一行
+
     // 1. 上傳封面圖片
     let coverUrl = "";
     if (coverFile) {
       coverUrl = await uploadToStorage(coverFile, "cover");
     }
+    console.log("產生 coverUrl", coverUrl);  // ⭐️ 這是取得網址後馬上 log
 
     // 2. 上傳所有 blocks 內的檔案（圖片/音檔/PDF…），替換 blocks 的 value/preview 成公開網址
     const uploadBlockFiles = async (b: Block, idx: number): Promise<Block> => {
@@ -215,6 +219,18 @@ export default function BlogeBookEdit() {
             className="flex-1 rounded px-4 py-2 bg-[#162040] border border-[#ffd700] text-xl"
             value={title} onChange={e => setTitle(e.target.value)}
             placeholder="請輸入BlogeBook標題"
+          />
+        </div>
+        {/* ⭐ 新增：簡介/描述欄位（放在標題下方） */}
+        <div className="mb-4 flex gap-3 items-center">
+            <label className="text-[#ffd700] min-w-[62px]">簡介</label>
+            <textarea
+              className="flex-1 rounded px-4 py-2 bg-[#162040] border border-[#ffd700] text-base"
+              rows={2}
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="請輸入簡介/描述，30字內吸引讀者"
+              maxLength={60}
           />
         </div>
         {/* 封面 */}

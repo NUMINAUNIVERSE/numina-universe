@@ -1,31 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-// import { useRouter } from "next/router"; // ← 這行可刪除
-
-// 假資料，可改成API獲取
-const dummyBook = {
-  title: "數位文明的新浪潮",
-  cover: "/cover1.jpg",
-  author: "Ryan Chang",
-  verified: true,
-  tags: ["知識", "商業"],
-  price: 99,
-  mode: "onepay",
-  content: [
-    { type: "text", value: "這是一篇介紹數位文明的新時代BlogeBook..." },
-    { type: "image", value: "/blogimg1.jpg" },
-    { type: "text", value: "智慧原鄉、神性宇宙，知識與創作正在這裡融合..." },
-    { type: "pdf", value: "/ebook_sample.pdf" },
-    { type: "audio", value: "/sample.mp3" },
-    { type: "sticker", value: "/sticker1.png" }
-  ],
-};
+import { useRouter } from "next/router";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function BlogeBookReadPage() {
-  // const router = useRouter(); // ← 這行可刪除
-  // const { id } = router.query; // 未來可根據id載入
-  const b = dummyBook;
+  const router = useRouter();
+  const { id } = router.query;
+  const [b, setB] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    async function fetchWork() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("works")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (data) setB(data);
+      setLoading(false);
+    }
+    fetchWork();
+  }, [id]);
+
+  if (loading || !b) {
+    return (
+      <div className="min-h-screen bg-[#0d1a2d] text-[#ffd700] flex items-center justify-center">
+        載入中...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
@@ -37,23 +43,25 @@ export default function BlogeBookReadPage() {
           {b.verified && <span className="inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>}
         </div>
         <div className="flex gap-2 items-center mb-2">
-          <span className="text-[#ffd700] font-bold">{b.author}</span>
+          {/* 作者名稱未來可從 author_id 反查 */}
+          <span className="text-[#ffd700] font-bold">{b.author || "匿名作者"}</span>
           <button className="bg-[#ffd700] text-[#0d1a2d] font-bold px-4 py-1 rounded-xl ml-3">訂閱作者</button>
         </div>
         <div className="flex gap-2 flex-wrap mb-4">
-          {b.tags.map((tag, i) => (
+          {b.tags?.map((tag: string, i: number) => (
             <span key={i} className="bg-[#ffd70022] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold">#{tag}</span>
           ))}
         </div>
         {/* 收費模式顯示 */}
         <div className="mb-6 text-[#ffd700] font-bold">
-          {b.mode === "onepay" && <>單篇購買 NT${b.price}</>}
-          {b.mode === "subscribe" && <>訂閱制（請訂閱作者）</>}
-          {b.mode === "reward" && <>打賞支持</>}
+          {b.pay_mode === "single" && <>單篇購買 NT${b.pay_price}</>}
+          {b.pay_mode === "sub" && <>訂閱制（請訂閱作者）</>}
+          {b.pay_mode === "tip" && <>打賞支持</>}
+          {b.pay_mode === "free" && <>免費</>}
         </div>
-        {/* 內容積木區塊 */}
+        {/* blocks 內容積木區 */}
         <div className="flex flex-col gap-6 mb-8">
-          {b.content.map((block, idx) => {
+          {b.blocks?.map((block: any, idx: number) => {
             if (block.type === "text") return <p key={idx} className="text-lg text-white/90">{block.value}</p>;
             if (block.type === "image") return <img key={idx} src={block.value} alt="" className="w-full rounded-lg" />;
             if (block.type === "sticker") return <img key={idx} src={block.value} alt="" className="h-16" />;
@@ -71,10 +79,17 @@ export default function BlogeBookReadPage() {
                 title="電子書閱讀"
               />
             );
+            if (block.type === "carousel" && block.preview) return (
+              <div key={idx} className="flex gap-2 overflow-x-auto">
+                {block.preview.map((src: string, i: number) => (
+                  <img key={i} src={src} alt="" className="h-40 rounded" />
+                ))}
+              </div>
+            );
             return null;
           })}
         </div>
-        {/* 互動功能 */}
+        {/* 互動功能（未來API串接） */}
         <div className="flex gap-6 items-center mb-4">
           <button className="text-[#ffd700] hover:scale-105 transition font-bold">👍 讚</button>
           <button className="text-[#ffd700] hover:scale-105 transition font-bold">💾 收藏</button>
