@@ -20,7 +20,7 @@ interface BlogeBook {
   subscribe?: boolean;
   desc?: string;
   created_at?: string;
-  blocks?: any[];
+  blocks?: object[];
   type: string;
 }
 
