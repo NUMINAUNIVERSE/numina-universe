@@ -2,18 +2,41 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = () => {
-    alert("Google 一鍵登入（之後串接 Supabase 或 Firebase）");
+  // Google 一鍵登入
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setMsg("");
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+    if (error) {
+      setMsg("Google 登入失敗：" + error.message);
+    }
+    setLoading(false);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Email/密碼登入
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Email：${email}\n密碼：${password}\n（之後串接登入API）`);
+    setLoading(true);
+    setMsg("");
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      setMsg("登入失敗：" + error.message);
+    } else {
+      setMsg("登入成功，導向首頁…");
+      setTimeout(() => window.location.href = "/", 1500);
+    }
+    setLoading(false);
   };
 
   return (
@@ -22,9 +45,12 @@ export default function Login() {
       <main className="flex flex-col items-center justify-center flex-grow px-4 py-16">
         <div className="bg-[#161e2d] rounded-2xl shadow-xl p-8 w-full max-w-md">
           <h1 className="text-2xl font-bold text-[#FFD700] mb-6 text-center">登入 NUMINA UNIVERSE</h1>
+          {msg && <div className="mb-4 text-center font-bold text-[#ffd700]">{msg}</div>}
           <button
             className="w-full flex items-center justify-center gap-3 bg-white text-[#0d1827] font-bold rounded-lg py-2 mb-6 hover:bg-[#fff9e3] transition"
             onClick={handleGoogleLogin}
+            disabled={loading}
+            type="button"
           >
             <svg width="24" height="24" viewBox="0 0 48 48"><g>
               <path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.4 32.9 29.7 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c2.8 0 5.3 1 7.3 2.6l6.3-6.3C33.8 5.1 29.2 3 24 3 12.9 3 4 11.9 4 23s8.9 20 20 20c11.1 0 20-8.9 20-20 0-1.3-.1-2.7-.5-4z"/>
@@ -44,6 +70,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="輸入信箱"
                 required
+                autoComplete="email"
               />
             </div>
             <div>
@@ -55,13 +82,15 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="輸入密碼"
                 required
+                autoComplete="current-password"
               />
             </div>
             <button
               type="submit"
               className="w-full bg-[#FFD700] text-[#0d1827] font-bold rounded-lg py-2 mt-2 hover:bg-[#fff9e3] transition"
+              disabled={loading}
             >
-              登入
+              {loading ? "登入中…" : "登入"}
             </button>
           </form>
           <div className="flex justify-between items-center mt-6">

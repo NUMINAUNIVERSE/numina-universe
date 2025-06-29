@@ -2,13 +2,25 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Forgot() {
   const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleForgot = (e: React.FormEvent) => {
+  const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`已寄送重設密碼連結到：${email}（請串接API）`);
+    setLoading(true);
+    setMsg("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      setMsg("重設密碼郵件寄送失敗：" + error.message);
+    } else {
+      setMsg(`已寄送重設密碼連結到：${email}，請至信箱查收`);
+      setTimeout(() => window.location.href = "/login", 4000);
+    }
+    setLoading(false);
   };
 
   return (
@@ -17,6 +29,7 @@ export default function Forgot() {
       <main className="flex flex-col items-center justify-center flex-grow px-4 py-16">
         <div className="bg-[#161e2d] rounded-2xl shadow-xl p-8 w-full max-w-md">
           <h1 className="text-2xl font-bold text-[#FFD700] mb-6 text-center">重設密碼</h1>
+          {msg && <div className="mb-4 text-center font-bold text-[#ffd700]">{msg}</div>}
           <form onSubmit={handleForgot} className="space-y-5">
             <div>
               <label className="block text-base font-semibold mb-1">Email</label>
@@ -32,8 +45,9 @@ export default function Forgot() {
             <button
               type="submit"
               className="w-full bg-[#FFD700] text-[#0d1827] font-bold rounded-lg py-2 mt-2 hover:bg-[#fff9e3] transition"
+              disabled={loading}
             >
-              發送重設連結
+              {loading ? "發送中…" : "發送重設連結"}
             </button>
           </form>
           <div className="flex justify-between items-center mt-6">
