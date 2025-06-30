@@ -45,9 +45,10 @@ export default function WonderlandIndex() {
   useEffect(() => {
     async function fetchWorks() {
       setLoading(true);
+      // 直接 select *，不用寫 author:xxx，避免 supabase 欄位對不上
       const { data, error } = await supabase
         .from("works")
-        .select(`id, type, title, cover, blocks, desc, author_id, like, comment, author:nickname, author:verified`)
+        .select("*")
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
 
@@ -59,32 +60,30 @@ export default function WonderlandIndex() {
         return;
       }
 
-      // 這裡明確定義型別
-      const mapped: Work[] = (data as any[]).map((w) => {
-        // blocks 可能 undefined/null
+      // 明確指定型別，並統一 fallback 預設值
+      const mapped: Work[] = (data as Partial<Work>[]).map((w) => {
+        const blocks: Block[] = Array.isArray(w.blocks) ? w.blocks as Block[] : [];
         const imgs: string[] =
-          w.blocks && Array.isArray(w.blocks)
-            ? w.blocks.filter((b: Block) => b.type === "image" && b.url).map((b: Block) => b.url)
-            : w.cover ? [w.cover] : [];
+          blocks.length > 0
+            ? blocks.filter((b) => b.type === "image" && b.url).map((b) => b.url)
+            : w.cover
+            ? [w.cover]
+            : [];
 
         return {
-          id: w.id ? String(w.id) : "",
+          id: w.id ?? "",
           type: w.type ?? "",
           title: w.title ?? "",
           cover: w.cover ?? "",
           imgs,
           desc: w.desc ?? "",
           author_id: w.author_id ?? "",
-          // 這裡 author（nickname、verified）有可能是 undefined，所以要給預設值
-          author: {
-            nickname: w.author?.nickname ?? "",
-            verified: w.author?.verified ?? false,
-          },
-          author_name: w.author?.nickname ?? "",
-          author_verified: w.author?.verified ?? false,
+          author: w.author ?? { nickname: "", verified: false },
+          author_name: (w.author as Author)?.nickname ?? "",
+          author_verified: (w.author as Author)?.verified ?? false,
           like: w.like ?? 0,
           comment: w.comment ?? 0,
-          blocks: w.blocks ?? [],
+          blocks: blocks,
         };
       });
       setWorks(mapped);
@@ -93,7 +92,7 @@ export default function WonderlandIndex() {
     fetchWorks();
   }, []);
 
-  // 篩選分頁內容
+  // 分類過濾
   const displayWorks = works.filter((w) =>
     tab === 0 ? true
       : tab === 3 ? false
