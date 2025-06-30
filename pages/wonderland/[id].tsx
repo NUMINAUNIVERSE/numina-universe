@@ -84,11 +84,17 @@ export default function WonderWorkPage() {
           ? (data.blocks as Block[]).filter((b) => b.type === "image").map((b) => b.url)
           : [];
 
+      // 注意 author 是一個陣列
+      const authorInfo = Array.isArray(data.author) && data.author.length > 0
+        ? data.author[0]
+        : null;
+
       setWork({
         ...data,
         imgs: imgs.length > 0 ? imgs : data.cover ? [data.cover] : [],
-        author_name: data.author?.nickname ?? "",
-        author_verified: data.author?.verified ?? false
+        author: authorInfo,
+        author_name: authorInfo?.nickname ?? "",
+        author_verified: authorInfo?.verified ?? false,
       });
       setImgIdx(0);
       setLoading(false);
