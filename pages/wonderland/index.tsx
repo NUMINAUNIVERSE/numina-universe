@@ -11,23 +11,23 @@ interface Block {
   url: string;
 }
 interface Author {
-  nickname?: string;
-  verified?: boolean;
+  nickname: string;
+  verified: boolean;
 }
 interface Work {
   id: string;
   type: string;
   title: string;
   cover: string;
-  imgs?: string[];
+  imgs: string[];
   desc: string;
   author_id: string;
   author?: Author;
-  author_name?: string;
-  author_verified?: boolean;
-  like?: number;
-  comment?: number;
-  blocks?: Block[];
+  author_name: string;
+  author_verified: boolean;
+  like: number;
+  comment: number;
+  blocks: Block[];
 }
 
 const stickerList = [
@@ -47,50 +47,61 @@ export default function WonderlandIndex() {
       setLoading(true);
       const { data, error } = await supabase
         .from("works")
-        .select("*")
+        .select(`id, type, title, cover, blocks, desc, author_id, like, comment, author:nickname, author:verified`)
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
 
       console.log("Supabase works data:", data, error);
 
       if (error || !data) {
-        console.error("載入失敗", error);
         setWorks([]);
-      } else {
-        // 強型別化＋default value 避免 undefined
-        const mapped: Work[] = (data as any[]).map((w): Work => ({
-          id: w.id ?? "",
+        setLoading(false);
+        return;
+      }
+
+      // 這裡明確定義型別
+      const mapped: Work[] = (data as any[]).map((w) => {
+        // blocks 可能 undefined/null
+        const imgs: string[] =
+          w.blocks && Array.isArray(w.blocks)
+            ? w.blocks.filter((b: Block) => b.type === "image" && b.url).map((b: Block) => b.url)
+            : w.cover ? [w.cover] : [];
+
+        return {
+          id: w.id ? String(w.id) : "",
           type: w.type ?? "",
           title: w.title ?? "",
           cover: w.cover ?? "",
-          imgs: w.blocks && Array.isArray(w.blocks)
-            ? w.blocks.filter((b: Block) => b.type === "image").map((b: Block) => b.url)
-            : w.cover ? [w.cover] : [],
+          imgs,
           desc: w.desc ?? "",
           author_id: w.author_id ?? "",
-          author: w.author ? { nickname: w.author.nickname ?? "", verified: w.author.verified ?? false } : undefined,
+          // 這裡 author（nickname、verified）有可能是 undefined，所以要給預設值
+          author: {
+            nickname: w.author?.nickname ?? "",
+            verified: w.author?.verified ?? false,
+          },
           author_name: w.author?.nickname ?? "",
           author_verified: w.author?.verified ?? false,
           like: w.like ?? 0,
           comment: w.comment ?? 0,
           blocks: w.blocks ?? [],
-        }));
-        setWorks(mapped);
-      }
+        };
+      });
+      setWorks(mapped);
       setLoading(false);
     }
     fetchWorks();
   }, []);
 
   // 篩選分頁內容
-  const displayWorks = works.filter(w =>
+  const displayWorks = works.filter((w) =>
     tab === 0 ? true
       : tab === 3 ? false
       : w.type === categories[tab]
   );
 
   const handleImgChange = (workId: string, dir: "prev" | "next", imgs: string[]) => {
-    setImgIndex(idx => {
+    setImgIndex((idx) => {
       const cur = idx[workId] || 0;
       const max = imgs.length - 1;
       let next = cur + (dir === "next" ? 1 : -1);
@@ -130,7 +141,7 @@ export default function WonderlandIndex() {
             <div className="text-center py-16 text-lg text-[#ffd700]">讀取中…</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
-              {displayWorks.map(work => (
+              {displayWorks.map((work) => (
                 <div key={work.id} className="bg-[#192243] rounded-2xl shadow-lg p-6 flex flex-col gap-2">
                   <div className="relative group w-full h-52 flex items-center justify-center bg-[#131a2e] rounded-lg mb-2 overflow-hidden">
                     <img
@@ -142,16 +153,16 @@ export default function WonderlandIndex() {
                       <>
                         <button
                           className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
-                          onClick={() => handleImgChange(work.id, "prev", work.imgs!)}
+                          onClick={() => handleImgChange(work.id, "prev", work.imgs)}
                           title="上一張"
                         >{"<"}</button>
                         <button
                           className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
-                          onClick={() => handleImgChange(work.id, "next", work.imgs!)}
+                          onClick={() => handleImgChange(work.id, "next", work.imgs)}
                           title="下一張"
                         >{">"}</button>
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                          {work.imgs!.map((img, idx) =>
+                          {work.imgs.map((img, idx) =>
                             <div key={idx}
                               className={`h-2 rounded-full ${idx === (imgIndex[work.id] || 0) ? "w-8 bg-[#ffd700]" : "w-2 bg-[#ffd70055]"}`} />
                           )}
