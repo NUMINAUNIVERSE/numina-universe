@@ -42,7 +42,6 @@ export default function WonderlandIndex() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // 主要差異：直接 select("*") + .eq("type", "wonderland")（簡單先抓回所有欄位）
   useEffect(() => {
     async function fetchWorks() {
       setLoading(true);
@@ -52,22 +51,30 @@ export default function WonderlandIndex() {
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
 
-      console.log("Supabase works data:", data, error); // ⭐️ Debug 1
+      console.log("Supabase works data:", data, error);
 
       if (error || !data) {
         console.error("載入失敗", error);
         setWorks([]);
       } else {
-        // blocks 若含有圖片 array，可自動解析
-        const mapped: Work[] = data.map((w: Partial<Work>) => ({
-          ...w,
+        // 強型別化＋default value 避免 undefined
+        const mapped: Work[] = (data as any[]).map((w): Work => ({
+          id: w.id ?? "",
+          type: w.type ?? "",
+          title: w.title ?? "",
+          cover: w.cover ?? "",
           imgs: w.blocks && Array.isArray(w.blocks)
             ? w.blocks.filter((b: Block) => b.type === "image").map((b: Block) => b.url)
             : w.cover ? [w.cover] : [],
-          author_name: w.author?.nickname || "", // 若沒 join 出 author，則為 ""
-          author_verified: w.author?.verified || false,
+          desc: w.desc ?? "",
+          author_id: w.author_id ?? "",
+          author: w.author ? { nickname: w.author.nickname ?? "", verified: w.author.verified ?? false } : undefined,
+          author_name: w.author?.nickname ?? "",
+          author_verified: w.author?.verified ?? false,
+          like: w.like ?? 0,
+          comment: w.comment ?? 0,
+          blocks: w.blocks ?? [],
         }));
-        console.log("mapped works:", mapped); // ⭐️ Debug 2
         setWorks(mapped);
       }
       setLoading(false);
