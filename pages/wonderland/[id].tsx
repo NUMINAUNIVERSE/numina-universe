@@ -8,27 +8,25 @@ interface Block {
   type: string;
   url: string;
 }
-
-interface AuthorInfo {
+interface Author {
   nickname: string;
   verified: boolean;
 }
-
 interface Work {
   id: string;
   type: string;
   title: string;
   desc: string;
   cover: string;
-  blocks?: Block[];
-  imgs?: string[];
+  blocks: Block[];
+  imgs: string[];
   author_id: string;
-  author?: AuthorInfo | null;
-  author_name?: string;
-  author_verified?: boolean;
-  like?: number;
-  collect?: number;
-  share?: number;
+  author: Author;
+  author_name: string;
+  author_verified: boolean;
+  like: number;
+  collect: number;
+  share: number;
 }
 
 interface Comment {
@@ -55,7 +53,7 @@ export default function WonderWorkPage() {
   const [commentVal, setCommentVal] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 抓取作品資料
+  // 抓取單篇作品資料
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -64,7 +62,7 @@ export default function WonderWorkPage() {
         .from("works")
         .select(
           `
-          id, type, title, desc, cover, blocks, author_id,
+          id, type, title, desc, cover, blocks, author_id, like, collect, share,
           author:author_id ( nickname, verified )
         `
         )
@@ -78,23 +76,38 @@ export default function WonderWorkPage() {
         return;
       }
 
-      // blocks 提取所有圖片
-      const imgs =
-        Array.isArray(data.blocks)
-          ? (data.blocks as Block[]).filter((b) => b.type === "image").map((b) => b.url)
+      // 明確處理 blocks/author 型別
+      const blocks: Block[] = Array.isArray(data.blocks) ? data.blocks as Block[] : [];
+      const imgs: string[] =
+        blocks.length > 0
+          ? blocks.filter((b) => b.type === "image" && b.url).map((b) => b.url)
+          : data.cover
+          ? [data.cover]
           : [];
 
-      // 注意 author 是一個陣列
-      const authorInfo = Array.isArray(data.author) && data.author.length > 0
-        ? data.author[0]
-        : null;
+      // author 可能會是 null/undefined/array
+      const authorData = Array.isArray(data.author)
+        ? data.author[0] ?? { nickname: "", verified: false }
+        : data.author ?? { nickname: "", verified: false };
 
       setWork({
-        ...data,
-        imgs: imgs.length > 0 ? imgs : data.cover ? [data.cover] : [],
-        author: authorInfo,
-        author_name: authorInfo?.nickname ?? "",
-        author_verified: authorInfo?.verified ?? false,
+        id: data.id ?? "",
+        type: data.type ?? "",
+        title: data.title ?? "",
+        desc: data.desc ?? "",
+        cover: data.cover ?? "",
+        blocks: blocks,
+        imgs: imgs,
+        author_id: data.author_id ?? "",
+        author: {
+          nickname: authorData.nickname ?? "",
+          verified: authorData.verified ?? false,
+        },
+        author_name: authorData.nickname ?? "",
+        author_verified: authorData.verified ?? false,
+        like: data.like ?? 0,
+        collect: data.collect ?? 0,
+        share: data.share ?? 0,
       });
       setImgIdx(0);
       setLoading(false);

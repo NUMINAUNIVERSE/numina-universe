@@ -25,7 +25,7 @@ export default function WonderlandEdit() {
 
   const router = useRouter();
 
-  // 讀取本機草稿
+  // 載入草稿
   React.useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) {
