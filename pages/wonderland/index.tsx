@@ -73,8 +73,8 @@ export default function WonderlandIndex() {
           imgs: w.blocks && Array.isArray(w.blocks)
             ? w.blocks.filter((b) => b.type === "image").map((b) => b.url)
             : w.cover ? [w.cover] : [],
-          author_name: (w as any).author?.nickname ?? "",
-          author_verified: (w as any).author?.verified ?? false,
+          author_name: (w.author as Author)?.nickname ?? "",
+          author_verified: (w.author as Author)?.verified ?? false,
         }));
         setWorks(mapped);
       }
