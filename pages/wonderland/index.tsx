@@ -6,6 +6,14 @@ import { supabase } from "@/lib/supabaseClient";
 
 const categories = ["全部", "插畫", "漫畫", "貼圖市集"];
 
+interface Block {
+  type: string;
+  url: string;
+}
+interface Author {
+  nickname?: string;
+  verified?: boolean;
+}
 interface Work {
   id: string;
   type: string;
@@ -14,11 +22,12 @@ interface Work {
   imgs?: string[];         // 作品多圖（可選，或 blocks 拆解）
   desc: string;            // 簡介/描述
   author_id: string;
+  author?: Author;
   author_name?: string;    // 作者暱稱
   author_verified?: boolean;
   like?: number;
   comment?: number;
-  blocks?: unknown[];      // 積木內容（可用於 imgs 擴充）
+  blocks?: Block[];
 }
 
 interface Sticker {
@@ -45,7 +54,6 @@ export default function WonderlandIndex() {
   useEffect(() => {
     async function fetchWorks() {
       setLoading(true);
-      // 這裡假設作者名稱/認證要 join 或自訂欄位
       const { data, error } = await supabase
         .from("works")
         .select(`
@@ -55,20 +63,19 @@ export default function WonderlandIndex() {
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
 
-      if (error) {
+      if (error || !data) {
         console.error("載入失敗", error);
         setWorks([]);
       } else {
         // blocks 若含有圖片 array，可自動解析
-      interface Block { type: string; url: string }
-      const mapped = (data as { [key: string]: any }[]).map(w => ({
-        ...w,
-        imgs: w.blocks && Array.isArray(w.blocks)
-          ? (w.blocks as Block[]).filter((b) => b.type === "image").map((b) => b.url)
-          : w.cover ? [w.cover] : [],
-        author_name: w.author?.nickname ?? "",
-        author_verified: w.author?.verified ?? false,
-      }));
+        const mapped: Work[] = (data as Work[]).map((w) => ({
+          ...w,
+          imgs: w.blocks && Array.isArray(w.blocks)
+            ? w.blocks.filter((b) => b.type === "image").map((b) => b.url)
+            : w.cover ? [w.cover] : [],
+          author_name: (w as any).author?.nickname ?? "",
+          author_verified: (w as any).author?.verified ?? false,
+        }));
         setWorks(mapped);
       }
       setLoading(false);
@@ -76,7 +83,7 @@ export default function WonderlandIndex() {
     fetchWorks();
   }, []);
 
-  const displayWorks = works.filter(w => 
+  const displayWorks = works.filter(w =>
     tab === 0 ? true
       : tab === 3 ? false
       : w.type === categories[tab]

@@ -160,8 +160,12 @@ export default function WonderlandEdit() {
         setMsg("發佈成功！即將跳轉 WonderLand 首頁…");
         setTimeout(() => router.push("/wonderland"), 1500);
       }
-    } catch (err: any) {
-      setMsg("錯誤：" + (err?.message ?? err));
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setMsg("錯誤：" + err.message);
+      } else {
+        setMsg("發生未知錯誤");
+      }
     }
     setLoading(false);
   };
