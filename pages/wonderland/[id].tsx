@@ -4,15 +4,26 @@ import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 
+interface Block {
+  type: string;
+  url: string;
+}
+
+interface AuthorInfo {
+  nickname: string;
+  verified: boolean;
+}
+
 interface Work {
   id: string;
   type: string;
   title: string;
   desc: string;
   cover: string;
-  blocks?: { type: string; url: string }[];
+  blocks?: Block[];
   imgs?: string[];
   author_id: string;
+  author?: AuthorInfo | null;
   author_name?: string;
   author_verified?: boolean;
   like?: number;
@@ -51,10 +62,12 @@ export default function WonderWorkPage() {
     (async () => {
       const { data, error } = await supabase
         .from("works")
-        .select(`
+        .select(
+          `
           id, type, title, desc, cover, blocks, author_id,
           author:author_id ( nickname, verified )
-        `)
+        `
+        )
         .eq("id", id)
         .eq("type", "wonderland")
         .single();
@@ -64,19 +77,18 @@ export default function WonderWorkPage() {
         setLoading(false);
         return;
       }
+
       // blocks 提取所有圖片
-      interface Block { type: string; url: string }
       const imgs =
         Array.isArray(data.blocks)
-          ? (data.blocks as Block[])
-              .filter((b) => b.type === "image")
-              .map((b) => b.url)
+          ? (data.blocks as Block[]).filter((b) => b.type === "image").map((b) => b.url)
           : [];
+
       setWork({
         ...data,
         imgs: imgs.length > 0 ? imgs : data.cover ? [data.cover] : [],
         author_name: data.author?.nickname ?? "",
-        author_verified: data.author?.verified ?? false,
+        author_verified: data.author?.verified ?? false
       });
       setImgIdx(0);
       setLoading(false);
@@ -84,19 +96,13 @@ export default function WonderWorkPage() {
   }, [id]);
 
   const nextImg = () =>
-    setImgIdx(i =>
-      work?.imgs ? (i + 1) % work.imgs.length : 0
-    );
+    setImgIdx((i) => (work?.imgs ? (i + 1) % work.imgs.length : 0));
   const prevImg = () =>
-    setImgIdx(i =>
-      work?.imgs
-        ? (i - 1 + work.imgs.length) % work.imgs.length
-        : 0
-    );
+    setImgIdx((i) => (work?.imgs ? (i - 1 + work.imgs.length) % work.imgs.length : 0));
 
   const submitComment = () => {
     if (!commentVal.trim()) return;
-    setCommentList(list => [
+    setCommentList((list) => [
       { id: Date.now(), user: "你", text: commentVal, time: "剛剛" },
       ...list
     ]);
