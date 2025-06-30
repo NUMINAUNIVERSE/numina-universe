@@ -1,29 +1,35 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabaseClient";
 
 const categories = ["全部", "插畫", "漫畫", "貼圖市集"];
-const works = [
-  {
-    id: "w1", type: "插畫", title: "星海之門", imgs: ["/img/w1a.jpg", "/img/w1b.jpg"],
-    author: { name: "阿星", verified: true }, desc: "幻想宇宙主題插畫", like: 321, comment: 12
-  },
-  {
-    id: "w2", type: "漫畫", title: "冒險序曲", imgs: ["/img/w2a.jpg", "/img/w2b.jpg", "/img/w2c.jpg"],
-    author: { name: "小圓", verified: false }, desc: "少年冒險漫畫短篇", like: 187, comment: 7
-  },
-  {
-    id: "w3", type: "貼圖", title: "萌寵表情包", imgs: ["/img/w3a.png", "/img/w3b.png"],
-    author: { name: "Neko", verified: true }, desc: "超可愛柴犬Q貼圖", like: 592, comment: 32
-  },
-  {
-    id: "w4", type: "插畫", title: "AI女神", imgs: ["/img/w4a.jpg"],
-    author: { name: "NUMINA", verified: true }, desc: "AI神性智慧主題", like: 209, comment: 4
-  },
-];
 
-const stickerList = [
+interface Work {
+  id: string;
+  type: string;
+  title: string;
+  cover: string;           // 封面圖（url）
+  imgs?: string[];         // 作品多圖（可選，或 blocks 拆解）
+  desc: string;            // 簡介/描述
+  author_id: string;
+  author_name?: string;    // 作者暱稱
+  author_verified?: boolean;
+  like?: number;
+  comment?: number;
+  blocks?: unknown[];      // 積木內容（可用於 imgs 擴充）
+}
+
+interface Sticker {
+  id: string;
+  name: string;
+  cover: string;
+  author: string;
+  owned: boolean;
+}
+
+const stickerList: Sticker[] = [
   { id: "s1", name: "柴犬貼圖", cover: "/stickers/dog1.png", author: "Neko", owned: false },
   { id: "s2", name: "宇宙Q人", cover: "/stickers/alien1.png", author: "Mina", owned: true },
 ];
@@ -31,7 +37,49 @@ const stickerList = [
 export default function WonderlandIndex() {
   const [tab, setTab] = useState(0);
   const [imgIndex, setImgIndex] = useState<{ [k: string]: number }>({});
+  const [works, setWorks] = useState<Work[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  // 拉取 Supabase 後端資料
+  useEffect(() => {
+    async function fetchWorks() {
+      setLoading(true);
+      // 這裡假設作者名稱/認證要 join 或自訂欄位
+      const { data, error } = await supabase
+        .from("works")
+        .select(`
+          id, type, title, cover, desc, author_id, blocks, like, comment,
+          author:author_id ( nickname, verified )
+        `)
+        .eq("type", "wonderland")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("載入失敗", error);
+        setWorks([]);
+      } else {
+        // blocks 若含有圖片 array，可自動解析
+        const mapped = (data as any[]).map(w => ({
+          ...w,
+          imgs: w.blocks && Array.isArray(w.blocks)
+            ? w.blocks.filter((b: any) => b.type === "image").map((b: any) => b.url)
+            : w.cover ? [w.cover] : [],
+          author_name: w.author?.nickname ?? "",
+          author_verified: w.author?.verified ?? false,
+        }));
+        setWorks(mapped);
+      }
+      setLoading(false);
+    }
+    fetchWorks();
+  }, []);
+
+  const displayWorks = works.filter(w => 
+    tab === 0 ? true
+      : tab === 3 ? false
+      : w.type === categories[tab]
+  );
 
   const handleImgChange = (workId: string, dir: "prev" | "next", imgs: string[]) => {
     setImgIndex(idx => {
@@ -43,10 +91,6 @@ export default function WonderlandIndex() {
       return { ...idx, [workId]: next };
     });
   };
-
-  const displayWorks = works.filter(
-    w => tab === 0 ? true : (tab === 3 ? false : w.type === categories[tab])
-  );
 
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
@@ -77,72 +121,76 @@ export default function WonderlandIndex() {
         </div>
         {/* 主要作品/貼圖市集Tab切換 */}
         {tab !== 3 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
-            {displayWorks.map(work => (
-              <div key={work.id} className="bg-[#192243] rounded-2xl shadow-lg p-6 flex flex-col gap-2">
-                {/* 封面/多圖橫滑 */}
-                <div className="relative group w-full h-52 flex items-center justify-center bg-[#131a2e] rounded-lg mb-2 overflow-hidden">
-                  <img
-                    src={work.imgs[imgIndex[work.id] || 0]}
-                    alt={work.title}
-                    className="object-contain h-full rounded-lg mx-auto transition-all duration-200"
-                  />
-                  {work.imgs.length > 1 && (
-                    <>
-                      <button
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
-                        onClick={() => handleImgChange(work.id, "prev", work.imgs)}
-                        title="上一張"
-                      >{"<"}</button>
-                      <button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
-                        onClick={() => handleImgChange(work.id, "next", work.imgs)}
-                        title="下一張"
-                      >{">"}</button>
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                        {work.imgs.map((img, idx) =>
-                          <div key={idx}
-                            className={`h-2 rounded-full ${idx === (imgIndex[work.id] || 0) ? "w-8 bg-[#ffd700]" : "w-2 bg-[#ffd70055]"}`} />
-                        )}
-                      </div>
-                    </>
-                  )}
+          loading ? (
+            <div className="text-center py-16 text-lg text-[#ffd700]">讀取中…</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
+              {displayWorks.map(work => (
+                <div key={work.id} className="bg-[#192243] rounded-2xl shadow-lg p-6 flex flex-col gap-2">
+                  {/* 封面/多圖橫滑 */}
+                  <div className="relative group w-full h-52 flex items-center justify-center bg-[#131a2e] rounded-lg mb-2 overflow-hidden">
+                    <img
+                      src={work.imgs && work.imgs.length > 0 ? work.imgs[imgIndex[work.id] || 0] : work.cover}
+                      alt={work.title}
+                      className="object-contain h-full rounded-lg mx-auto transition-all duration-200"
+                    />
+                    {work.imgs && work.imgs.length > 1 && (
+                      <>
+                        <button
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
+                          onClick={() => handleImgChange(work.id, "prev", work.imgs!)}
+                          title="上一張"
+                        >{"<"}</button>
+                        <button
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full flex items-center justify-center text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110 z-10"
+                          onClick={() => handleImgChange(work.id, "next", work.imgs!)}
+                          title="下一張"
+                        >{">"}</button>
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                          {work.imgs!.map((img, idx) =>
+                            <div key={idx}
+                              className={`h-2 rounded-full ${idx === (imgIndex[work.id] || 0) ? "w-8 bg-[#ffd700]" : "w-2 bg-[#ffd70055]"}`} />
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {/* 標題/類別/作者/訂閱 */}
+                  <div className="flex gap-2 items-center text-lg font-bold">
+                    <span>{work.title}</span>
+                    <span className="text-[#ffd700] text-xs border border-[#ffd700] rounded px-1 ml-2">{work.type}</span>
+                  </div>
+                  <div className="text-base text-[#fffbdc] min-h-[32px]">{work.desc}</div>
+                  <div className="flex gap-2 items-center mt-2">
+                    <span className="font-bold">{work.author_name || "創作者"}</span>
+                    {work.author_verified && (
+                      <span title="原創認證" className="ml-1 text-[#4dd0e1] bg-[#0d1a2d] border border-[#4dd0e1] px-1.5 py-0.5 text-xs rounded-full font-bold">✔</span>
+                    )}
+                    <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
+                  </div>
+                  {/* 互動按鈕區 */}
+                  <div className="flex gap-4 mt-3 justify-between">
+                    <button className="flex items-center gap-1 text-[#ffd700] font-bold hover:scale-110"><span>👍</span><span>讚</span></button>
+                    <button className="flex items-center gap-1 text-[#fffbdc] font-bold hover:scale-110"><span>💬</span><span>留言</span></button>
+                    <button className="flex items-center gap-1 text-[#61dafb] font-bold hover:scale-110"><span>🔗</span><span>分享</span></button>
+                    <button className="flex items-center gap-1 text-[#ff5aac] font-bold hover:scale-110"><span>★</span><span>收藏</span></button>
+                  </div>
+                  <div className="flex gap-4 mt-1 text-sm opacity-60">
+                    <span>👍 {work.like ?? 0}</span>
+                    <span>💬 {work.comment ?? 0}</span>
+                    <span className="text-[#ffd700] font-bold">🔥熱門</span>
+                  </div>
+                  {/* 閱讀查看按鈕 */}
+                  <button
+                    className="mt-3 px-5 py-2 bg-[#ffd700] text-[#181f32] font-bold rounded-xl hover:bg-[#fffde4] transition"
+                    onClick={() => router.push(`/wonderland/${work.id}`)}
+                  >
+                    閱讀查看
+                  </button>
                 </div>
-                {/* 標題/類別/作者/訂閱 */}
-                <div className="flex gap-2 items-center text-lg font-bold">
-                  <span>{work.title}</span>
-                  <span className="text-[#ffd700] text-xs border border-[#ffd700] rounded px-1 ml-2">{work.type}</span>
-                </div>
-                <div className="text-base text-[#fffbdc] min-h-[32px]">{work.desc}</div>
-                <div className="flex gap-2 items-center mt-2">
-                  <span className="font-bold">{work.author.name}</span>
-                  {work.author.verified && (
-                    <span title="原創認證" className="ml-1 text-[#4dd0e1] bg-[#0d1a2d] border border-[#4dd0e1] px-1.5 py-0.5 text-xs rounded-full font-bold">✔</span>
-                  )}
-                  <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
-                </div>
-                {/* 互動按鈕區 */}
-                <div className="flex gap-4 mt-3 justify-between">
-                  <button className="flex items-center gap-1 text-[#ffd700] font-bold hover:scale-110"><span>👍</span><span>讚</span></button>
-                  <button className="flex items-center gap-1 text-[#fffbdc] font-bold hover:scale-110"><span>💬</span><span>留言</span></button>
-                  <button className="flex items-center gap-1 text-[#61dafb] font-bold hover:scale-110"><span>🔗</span><span>分享</span></button>
-                  <button className="flex items-center gap-1 text-[#ff5aac] font-bold hover:scale-110"><span>★</span><span>收藏</span></button>
-                </div>
-                <div className="flex gap-4 mt-1 text-sm opacity-60">
-                  <span>👍 {work.like}</span>
-                  <span>💬 {work.comment}</span>
-                  <span className="text-[#ffd700] font-bold">🔥熱門</span>
-                </div>
-                {/* 閱讀查看按鈕（無斜線！） */}
-                <button
-                  className="mt-3 px-5 py-2 bg-[#ffd700] text-[#181f32] font-bold rounded-xl hover:bg-[#fffde4] transition"
-                  onClick={() => router.push(`/wonderland/${work.id}`)}
-                >
-                  閱讀查看
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         ) : (
           // 貼圖市集Tab
           <div className="flex flex-wrap gap-7">

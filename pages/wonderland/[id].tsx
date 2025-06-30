@@ -1,35 +1,97 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
+import { supabase } from "@/lib/supabaseClient";
 
-// 假資料，請換成API串接
-const work = {
-  id: "w2",
-  type: "漫畫",
-  title: "冒險序曲",
-  imgs: ["/img/w2a.jpg", "/img/w2b.jpg", "/img/w2c.jpg"],
-  author: { name: "小圓", verified: true, desc: "資深漫畫家，專長少年奇幻冒險。" },
-  desc: "少年與神獸的星際冒險正式展開——感動與友情兼備的奇幻故事！",
-  like: 201, collect: 52, share: 15, isSticker: false
-};
-const comments = [
-  { id: 1, user: "Mina", text: "超可愛主角！", time: "3小時前" },
-  { id: 2, user: "阿松", text: "畫風很吸引人～", time: "1天前" }
-];
+interface Work {
+  id: string;
+  type: string;
+  title: string;
+  desc: string;
+  cover: string;
+  blocks?: { type: string; url: string }[];
+  imgs?: string[];
+  author_id: string;
+  author_name?: string;
+  author_verified?: boolean;
+  like?: number;
+  collect?: number;
+  share?: number;
+}
+
+interface Comment {
+  id: number | string;
+  user: string;
+  text: string;
+  time: string;
+}
 
 export default function WonderWorkPage() {
   const router = useRouter();
+  const { id } = router.query;
+
+  const [work, setWork] = useState<Work | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
   const [fav, setFav] = useState(false);
   const [like, setLike] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
-  const [commentList, setCommentList] = useState(comments);
+  const [commentList, setCommentList] = useState<Comment[]>([
+    { id: 1, user: "Mina", text: "超可愛主角！", time: "3小時前" },
+    { id: 2, user: "阿松", text: "畫風很吸引人～", time: "1天前" }
+  ]);
   const [commentVal, setCommentVal] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const nextImg = () => setImgIdx(i => (i + 1) % work.imgs.length);
-  const prevImg = () => setImgIdx(i => (i - 1 + work.imgs.length) % work.imgs.length);
+  // 抓取作品資料
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("works")
+        .select(`
+          id, type, title, desc, cover, blocks, author_id,
+          author:author_id ( nickname, verified )
+        `)
+        .eq("id", id)
+        .eq("type", "wonderland")
+        .single();
+
+      if (error || !data) {
+        setWork(null);
+        setLoading(false);
+        return;
+      }
+      // blocks 提取所有圖片
+      const imgs =
+        Array.isArray(data.blocks)
+          ? data.blocks
+              .filter((b: any) => b.type === "image")
+              .map((b: any) => b.url)
+          : [];
+      setWork({
+        ...data,
+        imgs: imgs.length > 0 ? imgs : data.cover ? [data.cover] : [],
+        author_name: data.author?.nickname ?? "",
+        author_verified: data.author?.verified ?? false,
+      });
+      setImgIdx(0);
+      setLoading(false);
+    })();
+  }, [id]);
+
+  const nextImg = () =>
+    setImgIdx(i =>
+      work?.imgs ? (i + 1) % work.imgs.length : 0
+    );
+  const prevImg = () =>
+    setImgIdx(i =>
+      work?.imgs
+        ? (i - 1 + work.imgs.length) % work.imgs.length
+        : 0
+    );
 
   const submitComment = () => {
     if (!commentVal.trim()) return;
@@ -39,6 +101,29 @@ export default function WonderWorkPage() {
     ]);
     setCommentVal("");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
+        <Navbar />
+        <div className="max-w-3xl w-full mx-auto flex-1 py-8 px-2 sm:px-4">
+          <div className="text-center py-24 text-lg text-[#ffd700]">載入中…</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  if (!work) {
+    return (
+      <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
+        <Navbar />
+        <div className="max-w-3xl w-full mx-auto flex-1 py-8 px-2 sm:px-4">
+          <div className="text-center py-24 text-lg text-[#ffd700]">找不到這個作品！</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
@@ -57,8 +142,8 @@ export default function WonderWorkPage() {
         </div>
         {/* 作者/訂閱 */}
         <div className="flex gap-2 items-center text-base font-bold mb-3">
-          <span>{work.author.name}</span>
-          {work.author.verified && (
+          <span>{work.author_name || "創作者"}</span>
+          {work.author_verified && (
             <span title="原創認證" className="ml-1 text-[#4dd0e1] bg-[#0d1a2d] border border-[#4dd0e1] px-1.5 py-0.5 text-xs rounded-full font-bold">✔</span>
           )}
           <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
@@ -71,8 +156,12 @@ export default function WonderWorkPage() {
         <div className="text-lg text-[#fffbdc] mb-5">{work.desc}</div>
         {/* 封面區（多圖橫滑） */}
         <div className="relative w-full h-72 bg-[#181f32] rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-          <img src={work.imgs[imgIdx]} alt="" className="object-contain max-h-72 mx-auto rounded-lg transition-all duration-200" />
-          {work.imgs.length > 1 && (
+          {work.imgs && work.imgs.length > 0 ? (
+            <img src={work.imgs[imgIdx]} alt="" className="object-contain max-h-72 mx-auto rounded-lg transition-all duration-200" />
+          ) : (
+            <div className="text-[#ffd700] text-center w-full">（沒有圖片）</div>
+          )}
+          {work.imgs && work.imgs.length > 1 && (
             <>
               <button
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110"
@@ -96,21 +185,21 @@ export default function WonderWorkPage() {
         {/* 互動功能 */}
         <div className="flex gap-4 mt-2 mb-3">
           <button className={`flex items-center gap-1 text-[#ffd700] font-bold hover:scale-110 ${like ? "opacity-80" : ""}`}
-            onClick={() => setLike(l=>!l)}>
+            onClick={() => setLike(l => !l)}>
             <span>👍</span><span>讚</span>
           </button>
           <button className={`flex items-center gap-1 text-[#ff5aac] font-bold hover:scale-110 ${fav ? "opacity-80" : ""}`}
-            onClick={() => setFav(f=>!f)}>
+            onClick={() => setFav(f => !f)}>
             <span>★</span><span>收藏</span>
           </button>
           <button className="flex items-center gap-1 text-[#61dafb] font-bold hover:scale-110"
-            onClick={()=>navigator.share && navigator.share({title:work.title, url:window.location.href})}>
+            onClick={() => navigator.share && navigator.share({ title: work.title, url: window.location.href })}>
             <span>🔗</span><span>分享</span>
           </button>
           <span className="flex items-center gap-1 text-[#fffbdc]"><span>💬</span><span>{commentList.length} 則留言</span></span>
         </div>
         {/* 作者簡介 */}
-        <div className="text-[#97b0cf] text-sm mb-7">作者介紹：{work.author.desc}</div>
+        <div className="text-[#97b0cf] text-sm mb-7">作者介紹：{work.author_name || "無"}</div>
         {/* 留言區 */}
         <div className="bg-[#181f32] rounded-xl p-4 mb-16">
           <div className="font-bold mb-2">留言討論區</div>
@@ -118,7 +207,7 @@ export default function WonderWorkPage() {
             <input
               type="text"
               value={commentVal}
-              onChange={e=>setCommentVal(e.target.value)}
+              onChange={e => setCommentVal(e.target.value)}
               className="flex-1 rounded px-3 py-1 text-white bg-[#181f32] border border-[#ffd70044] placeholder-[#ffd70099]"
               placeholder="發表留言…"
             />
@@ -143,8 +232,8 @@ export default function WonderWorkPage() {
               <div className="mb-4 text-sm">說明原因：</div>
               <textarea className="w-full h-24 rounded p-2 mb-4 text-black" placeholder="請簡要說明問題…" />
               <div className="flex gap-2">
-                <button className="flex-1 bg-[#ffd700] rounded py-1 font-bold text-[#181f32]" onClick={()=>setShowReport(false)}>送出</button>
-                <button className="flex-1 border border-[#ffd700] rounded py-1 text-[#ffd700]" onClick={()=>setShowReport(false)}>取消</button>
+                <button className="flex-1 bg-[#ffd700] rounded py-1 font-bold text-[#181f32]" onClick={() => setShowReport(false)}>送出</button>
+                <button className="flex-1 border border-[#ffd700] rounded py-1 text-[#ffd700]" onClick={() => setShowReport(false)}>取消</button>
               </div>
             </div>
           </div>
@@ -161,8 +250,8 @@ export default function WonderWorkPage() {
                 <button className="flex-1 bg-[#ffd700] rounded py-1 font-bold text-[#181f32]">自訂</button>
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 bg-[#ffd700] rounded py-1 font-bold text-[#181f32]" onClick={()=>setShowDonate(false)}>送出</button>
-                <button className="flex-1 border border-[#ffd700] rounded py-1 text-[#ffd700]" onClick={()=>setShowDonate(false)}>取消</button>
+                <button className="flex-1 bg-[#ffd700] rounded py-1 font-bold text-[#181f32]" onClick={() => setShowDonate(false)}>送出</button>
+                <button className="flex-1 border border-[#ffd700] rounded py-1 text-[#ffd700]" onClick={() => setShowDonate(false)}>取消</button>
               </div>
             </div>
           </div>
@@ -172,4 +261,3 @@ export default function WonderWorkPage() {
     </div>
   );
 }
-
