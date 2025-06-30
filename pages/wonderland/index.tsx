@@ -18,27 +18,19 @@ interface Work {
   id: string;
   type: string;
   title: string;
-  cover: string;           // 封面圖（url）
-  imgs?: string[];         // 作品多圖（可選，或 blocks 拆解）
-  desc: string;            // 簡介/描述
+  cover: string;
+  imgs?: string[];
+  desc: string;
   author_id: string;
   author?: Author;
-  author_name?: string;    // 作者暱稱
+  author_name?: string;
   author_verified?: boolean;
   like?: number;
   comment?: number;
   blocks?: Block[];
 }
 
-interface Sticker {
-  id: string;
-  name: string;
-  cover: string;
-  author: string;
-  owned: boolean;
-}
-
-const stickerList: Sticker[] = [
+const stickerList = [
   { id: "s1", name: "柴犬貼圖", cover: "/stickers/dog1.png", author: "Neko", owned: false },
   { id: "s2", name: "宇宙Q人", cover: "/stickers/alien1.png", author: "Mina", owned: true },
 ];
@@ -50,32 +42,32 @@ export default function WonderlandIndex() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // 拉取 Supabase 後端資料
+  // 主要差異：直接 select("*") + .eq("type", "wonderland")（簡單先抓回所有欄位）
   useEffect(() => {
     async function fetchWorks() {
       setLoading(true);
       const { data, error } = await supabase
         .from("works")
-        .select(`
-          id, type, title, cover, desc, author_id, blocks, like, comment,
-          author:author_id ( nickname, verified )
-        `)
+        .select("*")
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
+
+      console.log("Supabase works data:", data, error); // ⭐️ Debug 1
 
       if (error || !data) {
         console.error("載入失敗", error);
         setWorks([]);
       } else {
         // blocks 若含有圖片 array，可自動解析
-        const mapped: Work[] = (data as Work[]).map((w) => ({
+        const mapped: Work[] = data.map((w: any) => ({
           ...w,
           imgs: w.blocks && Array.isArray(w.blocks)
-            ? w.blocks.filter((b) => b.type === "image").map((b) => b.url)
+            ? w.blocks.filter((b: Block) => b.type === "image").map((b: Block) => b.url)
             : w.cover ? [w.cover] : [],
-          author_name: (w.author as Author)?.nickname ?? "",
-          author_verified: (w.author as Author)?.verified ?? false,
+          author_name: w.author?.nickname || "", // 若沒 join 出 author，則為 ""
+          author_verified: w.author?.verified || false,
         }));
+        console.log("mapped works:", mapped); // ⭐️ Debug 2
         setWorks(mapped);
       }
       setLoading(false);
@@ -83,6 +75,7 @@ export default function WonderlandIndex() {
     fetchWorks();
   }, []);
 
+  // 篩選分頁內容
   const displayWorks = works.filter(w =>
     tab === 0 ? true
       : tab === 3 ? false
@@ -104,7 +97,6 @@ export default function WonderlandIndex() {
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
       <Navbar />
       <div className="max-w-5xl w-full mx-auto flex-1 py-10 px-2 sm:px-4">
-        {/* 我要創作按鈕 */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-3xl font-bold text-[#ffd700] tracking-wide">WonderLand 星系專區</h2>
           <button
@@ -114,7 +106,6 @@ export default function WonderlandIndex() {
             ＋ 我要創作
           </button>
         </div>
-        {/* chips分頁 */}
         <div className="flex gap-2 mb-8">
           {categories.map((cat, i) => (
             <button key={cat}
@@ -127,7 +118,6 @@ export default function WonderlandIndex() {
             >{cat}</button>
           ))}
         </div>
-        {/* 主要作品/貼圖市集Tab切換 */}
         {tab !== 3 ? (
           loading ? (
             <div className="text-center py-16 text-lg text-[#ffd700]">讀取中…</div>
@@ -135,7 +125,6 @@ export default function WonderlandIndex() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
               {displayWorks.map(work => (
                 <div key={work.id} className="bg-[#192243] rounded-2xl shadow-lg p-6 flex flex-col gap-2">
-                  {/* 封面/多圖橫滑 */}
                   <div className="relative group w-full h-52 flex items-center justify-center bg-[#131a2e] rounded-lg mb-2 overflow-hidden">
                     <img
                       src={work.imgs && work.imgs.length > 0 ? work.imgs[imgIndex[work.id] || 0] : work.cover}
@@ -163,7 +152,6 @@ export default function WonderlandIndex() {
                       </>
                     )}
                   </div>
-                  {/* 標題/類別/作者/訂閱 */}
                   <div className="flex gap-2 items-center text-lg font-bold">
                     <span>{work.title}</span>
                     <span className="text-[#ffd700] text-xs border border-[#ffd700] rounded px-1 ml-2">{work.type}</span>
@@ -176,7 +164,6 @@ export default function WonderlandIndex() {
                     )}
                     <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
                   </div>
-                  {/* 互動按鈕區 */}
                   <div className="flex gap-4 mt-3 justify-between">
                     <button className="flex items-center gap-1 text-[#ffd700] font-bold hover:scale-110"><span>👍</span><span>讚</span></button>
                     <button className="flex items-center gap-1 text-[#fffbdc] font-bold hover:scale-110"><span>💬</span><span>留言</span></button>
@@ -188,7 +175,6 @@ export default function WonderlandIndex() {
                     <span>💬 {work.comment ?? 0}</span>
                     <span className="text-[#ffd700] font-bold">🔥熱門</span>
                   </div>
-                  {/* 閱讀查看按鈕 */}
                   <button
                     className="mt-3 px-5 py-2 bg-[#ffd700] text-[#181f32] font-bold rounded-xl hover:bg-[#fffde4] transition"
                     onClick={() => router.push(`/wonderland/${work.id}`)}
@@ -200,7 +186,6 @@ export default function WonderlandIndex() {
             </div>
           )
         ) : (
-          // 貼圖市集Tab
           <div className="flex flex-wrap gap-7">
             {stickerList.map(stk => (
               <div key={stk.id} className="bg-[#192243] rounded-2xl shadow-lg w-60 p-5 flex flex-col items-center">
