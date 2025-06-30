@@ -60,14 +60,15 @@ export default function WonderlandIndex() {
         setWorks([]);
       } else {
         // blocks 若含有圖片 array，可自動解析
-        const mapped = (data as any[]).map(w => ({
-          ...w,
-          imgs: w.blocks && Array.isArray(w.blocks)
-            ? w.blocks.filter((b: any) => b.type === "image").map((b: any) => b.url)
-            : w.cover ? [w.cover] : [],
-          author_name: w.author?.nickname ?? "",
-          author_verified: w.author?.verified ?? false,
-        }));
+      interface Block { type: string; url: string }
+      const mapped = (data as { [key: string]: any }[]).map(w => ({
+        ...w,
+        imgs: w.blocks && Array.isArray(w.blocks)
+          ? (w.blocks as Block[]).filter((b) => b.type === "image").map((b) => b.url)
+          : w.cover ? [w.cover] : [],
+        author_name: w.author?.nickname ?? "",
+        author_verified: w.author?.verified ?? false,
+      }));
         setWorks(mapped);
       }
       setLoading(false);

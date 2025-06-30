@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/router";
 
 type WorkType = "插畫" | "漫畫" | "貼圖";
+interface Block { type: string; url: string }
 
 const DRAFT_KEY = "numina_wonderland_draft";
 
@@ -132,10 +133,10 @@ export default function WonderlandEdit() {
       }
 
       // 整理 blocks/內容結構
-      const blocks: unknown[] = [
-        ...(imgUrls.map(url => ({ type: "image", url }))),
+      const blocks: Block[] = [
+        ...imgUrls.map(url => ({ type: "image", url })),
         ...(pdfUrl ? [{ type: "pdf", url: pdfUrl }] : []),
-        ...(stickerUrls.length > 0 ? stickerUrls.map(url => ({ type: "sticker", url })) : [])
+        ...stickerUrls.map(url => ({ type: "sticker", url }))
       ];
 
       // 發布到 works 表

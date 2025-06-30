@@ -65,11 +65,12 @@ export default function WonderWorkPage() {
         return;
       }
       // blocks 提取所有圖片
+      interface Block { type: string; url: string }
       const imgs =
         Array.isArray(data.blocks)
-          ? data.blocks
-              .filter((b: any) => b.type === "image")
-              .map((b: any) => b.url)
+          ? (data.blocks as Block[])
+              .filter((b) => b.type === "image")
+              .map((b) => b.url)
           : [];
       setWork({
         ...data,
