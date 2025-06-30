@@ -59,7 +59,7 @@ export default function WonderlandIndex() {
         setWorks([]);
       } else {
         // blocks 若含有圖片 array，可自動解析
-        const mapped: Work[] = data.map((w: any) => ({
+        const mapped: Work[] = data.map((w: Partial<Work>) => ({
           ...w,
           imgs: w.blocks && Array.isArray(w.blocks)
             ? w.blocks.filter((b: Block) => b.type === "image").map((b: Block) => b.url)
