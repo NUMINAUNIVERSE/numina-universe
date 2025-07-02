@@ -98,7 +98,7 @@ export default function BlogeBookEdit() {
     copy.splice(idx + dir, 0, item);
     setBlocks(copy);
   }
-  function handleFileUpload(idx: number, files: FileList | null, _isMulti: boolean = false) {
+  function handleFileUpload(idx: number, files: FileList | null) {
     if (!files) return;
     const arr = Array.from(files);
     updateBlock(idx, {
@@ -322,7 +322,7 @@ export default function BlogeBookEdit() {
               )}
               {block.type === "carousel" && (
                 <div>
-                  <input type="file" accept="image/*" multiple onChange={e => handleFileUpload(idx, e.target.files, true)} />
+                  <input type="file" accept="image/*" multiple onChange={e => handleFileUpload(idx, e.target.files)} />
                   <div className="flex gap-2 mt-2 overflow-x-auto">
                     {block.preview && block.preview.map((src, i) => (
                       <img key={i} src={src} className="h-24 rounded" alt="" />
