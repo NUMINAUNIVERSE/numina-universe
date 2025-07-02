@@ -27,20 +27,41 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
     setMsg("");
-    // 註冊（email, password, nickname 寫進 user_metadata）
-    const { error } = await supabase.auth.signUp({
+
+    // 註冊帳號（寫進 supabase.auth，nickname 寫入 user_metadata）
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { nickname }
       }
     });
+
     if (error) {
       setMsg("註冊失敗：" + error.message);
-    } else {
-      setMsg("註冊成功，請至信箱點擊驗證連結！");
-      setTimeout(() => window.location.href = "/login", 3000);
+      setLoading(false);
+      return;
     }
+
+    // 註冊成功後，同步寫入 users table
+    // 注意！data.user 可能為 undefined，需安全檢查
+    if (data && data.user) {
+      // 用 schema 只寫必要欄位即可
+      const { error: insertErr } = await supabase.from("users").insert({
+        id: data.user.id,
+        username: email,
+        name: nickname,
+        email
+      });
+      if (insertErr) {
+        setMsg("註冊成功，但同步用戶資料時發生錯誤，請聯絡管理員！");
+        setLoading(false);
+        return;
+      }
+    }
+
+    setMsg("註冊成功，請至信箱點擊驗證連結！");
+    setTimeout(() => window.location.href = "/login", 3000);
     setLoading(false);
   };
 
