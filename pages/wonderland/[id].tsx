@@ -4,14 +4,9 @@ import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 
-interface Block {
-  type: string;
-  url: string;
-}
-interface Author {
-  nickname: string;
-  verified: boolean;
-}
+// Block 型別，對齊 DB
+interface Block { type: string; url: string; }
+interface Author { nickname: string; verified: boolean; }
 interface Work {
   id: string;
   type: string;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
@@ -22,11 +22,19 @@ export default function WonderlandEdit() {
   const [showDraftMsg, setShowDraftMsg] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authorId, setAuthorId] = useState<string | null>(null);
 
   const router = useRouter();
 
+  // 取得會員ID（驗證作者）
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setAuthorId(user?.id ?? null);
+    });
+  }, []);
+
   // 載入草稿
-  React.useEffect(() => {
+  useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) {
       try {
@@ -83,6 +91,11 @@ export default function WonderlandEdit() {
     setMsg("");
     setLoading(true);
     try {
+      if (!authorId) {
+        setMsg("請先登入會員才能發布作品！");
+        setLoading(false);
+        return;
+      }
       if (!title.trim()) {
         setMsg("請輸入標題！");
         setLoading(false);
@@ -139,7 +152,7 @@ export default function WonderlandEdit() {
         ...stickerUrls.map(url => ({ type: "sticker", url }))
       ];
 
-      // 發布到 works 表
+      // 發布到 works 表（欄位對齊schema）
       const payload = {
         title,
         desc,
@@ -148,8 +161,9 @@ export default function WonderlandEdit() {
         blocks,
         main_cat: type,
         tags: [],
-        pay_mode: pricing,
+        pay_mode: pricing === "免費" ? "free" : pricing === "打賞贊助" ? "tip" : pricing === "訂閱制" ? "sub" : "single",
         pay_price: (pricing === "單篇收費" || pricing === "訂閱制") ? parseInt(price) || 0 : 0,
+        author_id: authorId,
         created_at: new Date(),
       };
 

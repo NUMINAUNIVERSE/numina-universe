@@ -22,12 +22,12 @@ interface Work {
   imgs: string[];
   desc: string;
   author_id: string;
-  author?: Author;
   author_name: string;
   author_verified: boolean;
   like: number;
   comment: number;
   blocks: Block[];
+  created_at?: string;
 }
 
 const stickerList = [
@@ -45,14 +45,11 @@ export default function WonderlandIndex() {
   useEffect(() => {
     async function fetchWorks() {
       setLoading(true);
-      // 直接 select *，不用寫 author:xxx，避免 supabase 欄位對不上
       const { data, error } = await supabase
         .from("works")
         .select("*")
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
-
-      console.log("Supabase works data:", data, error);
 
       if (error || !data) {
         setWorks([]);
@@ -60,7 +57,7 @@ export default function WonderlandIndex() {
         return;
       }
 
-      // 明確指定型別，並統一 fallback 預設值
+      // 補齊欄位型別
       const mapped: Work[] = (data as Partial<Work>[]).map((w) => {
         const blocks: Block[] = Array.isArray(w.blocks) ? w.blocks as Block[] : [];
         const imgs: string[] =
@@ -78,12 +75,12 @@ export default function WonderlandIndex() {
           imgs,
           desc: w.desc ?? "",
           author_id: w.author_id ?? "",
-          author: w.author ?? { nickname: "", verified: false },
-          author_name: (w.author as Author)?.nickname ?? "",
-          author_verified: (w.author as Author)?.verified ?? false,
+          author_name: w.author_name ?? "",
+          author_verified: w.author_verified ?? false,
           like: w.like ?? 0,
           comment: w.comment ?? 0,
           blocks: blocks,
+          created_at: w.created_at ?? "",
         };
       });
       setWorks(mapped);
