@@ -33,7 +33,7 @@ export default function BlogeBookReadPage() {
   const [b, setB] = useState<Work | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 取得作者暱稱（假如有需要顯示，這裡用users表，或只顯示ID）
+  // 取得作者顯示名稱（只顯示 name、username、email 前半段）
   const [authorName, setAuthorName] = useState<string>("");
 
   useEffect(() => {
@@ -48,15 +48,15 @@ export default function BlogeBookReadPage() {
       if (data) {
         setB(data as Work);
 
-        // 額外撈作者名稱（若users表有username/nickname）
+        // 撈作者 name、username、email
         if (data.author_id) {
           const { data: userData } = await supabase
             .from("users")
-            .select("nickname,username,email")
+            .select("name,username,email")
             .eq("id", data.author_id)
             .single();
           setAuthorName(
-            userData?.nickname ||
+            userData?.name ||
             userData?.username ||
             userData?.email?.split("@")[0] ||
             "匿名作者"

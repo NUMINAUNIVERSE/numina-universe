@@ -4,9 +4,11 @@ import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 
-// Block 型別，對齊 DB
-interface Block { type: string; url: string; }
-interface Author { nickname: string; verified: boolean; }
+// Block 型別
+interface Block {
+  type: string;
+  url: string;
+}
 interface Work {
   id: string;
   type: string;
@@ -16,9 +18,6 @@ interface Work {
   blocks: Block[];
   imgs: string[];
   author_id: string;
-  author: Author;
-  author_name: string;
-  author_verified: boolean;
   like: number;
   collect: number;
   share: number;
@@ -48,6 +47,9 @@ export default function WonderWorkPage() {
   const [commentVal, setCommentVal] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // 新增作者名稱欄位
+  const [authorName, setAuthorName] = useState<string>("創作者");
+
   // 抓取單篇作品資料
   useEffect(() => {
     if (!id) return;
@@ -55,12 +57,7 @@ export default function WonderWorkPage() {
     (async () => {
       const { data, error } = await supabase
         .from("works")
-        .select(
-          `
-          id, type, title, desc, cover, blocks, author_id, like, collect, share,
-          author:author_id ( nickname, verified )
-        `
-        )
+        .select(`id, type, title, desc, cover, blocks, author_id, like, collect, share`)
         .eq("id", id)
         .eq("type", "wonderland")
         .single();
@@ -71,7 +68,7 @@ export default function WonderWorkPage() {
         return;
       }
 
-      // 明確處理 blocks/author 型別
+      // blocks / imgs
       const blocks: Block[] = Array.isArray(data.blocks) ? data.blocks as Block[] : [];
       const imgs: string[] =
         blocks.length > 0
@@ -79,11 +76,6 @@ export default function WonderWorkPage() {
           : data.cover
           ? [data.cover]
           : [];
-
-      // author 可能會是 null/undefined/array
-      const authorData = Array.isArray(data.author)
-        ? data.author[0] ?? { nickname: "", verified: false }
-        : data.author ?? { nickname: "", verified: false };
 
       setWork({
         id: data.id ?? "",
@@ -94,16 +86,27 @@ export default function WonderWorkPage() {
         blocks: blocks,
         imgs: imgs,
         author_id: data.author_id ?? "",
-        author: {
-          nickname: authorData.nickname ?? "",
-          verified: authorData.verified ?? false,
-        },
-        author_name: authorData.nickname ?? "",
-        author_verified: authorData.verified ?? false,
         like: data.like ?? 0,
         collect: data.collect ?? 0,
         share: data.share ?? 0,
       });
+
+      // 撈作者顯示名稱
+      if (data.author_id) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("name,username,email")
+          .eq("id", data.author_id)
+          .single();
+        setAuthorName(
+          userData?.name ||
+          userData?.username ||
+          (userData?.email ? userData.email.split("@")[0] : "創作者")
+        );
+      } else {
+        setAuthorName("創作者");
+      }
+
       setImgIdx(0);
       setLoading(false);
     })();
@@ -163,10 +166,8 @@ export default function WonderWorkPage() {
         </div>
         {/* 作者/訂閱 */}
         <div className="flex gap-2 items-center text-base font-bold mb-3">
-          <span>{work.author_name || "創作者"}</span>
-          {work.author_verified && (
-            <span title="原創認證" className="ml-1 text-[#4dd0e1] bg-[#0d1a2d] border border-[#4dd0e1] px-1.5 py-0.5 text-xs rounded-full font-bold">✔</span>
-          )}
+          <span>{authorName}</span>
+          {/* 這裡可以判斷作者 verified 狀態，暫略，未來有要加可再串 */}
           <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
           <button className="ml-2 px-3 py-1 bg-[#ff5aac] rounded-lg text-white text-xs font-bold hover:bg-[#ffaddc]" onClick={() => setShowDonate(true)}>打賞</button>
           <button className="ml-2 px-3 py-1 border border-[#4dd0e1] rounded-lg text-[#4dd0e1] text-xs font-bold hover:bg-[#133649] hover:text-white"
@@ -220,7 +221,7 @@ export default function WonderWorkPage() {
           <span className="flex items-center gap-1 text-[#fffbdc]"><span>💬</span><span>{commentList.length} 則留言</span></span>
         </div>
         {/* 作者簡介 */}
-        <div className="text-[#97b0cf] text-sm mb-7">作者介紹：{work.author_name || "無"}</div>
+        <div className="text-[#97b0cf] text-sm mb-7">作者介紹：{authorName || "無"}</div>
         {/* 留言區 */}
         <div className="bg-[#181f32] rounded-xl p-4 mb-16">
           <div className="font-bold mb-2">留言討論區</div>

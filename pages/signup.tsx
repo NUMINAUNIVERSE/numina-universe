@@ -4,12 +4,35 @@ import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+// 檢查 username 是否唯一
+async function checkUsernameUnique(username: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id")
+    .eq("username", username)
+    .single();
+  return !data; // 若沒撈到 data，代表可用
+}
+
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+
+  // 即時檢查 username 唯一
+  const handleUsernameChange = async (val: string) => {
+    setUsername(val);
+    if (val.length >= 3) {
+      const unique = await checkUsernameUnique(val);
+      setUsernameAvailable(unique);
+    } else {
+      setUsernameAvailable(null);
+    }
+  };
 
   // Google 一鍵註冊
   const handleGoogleSignup = async () => {
@@ -28,12 +51,25 @@ export default function Signup() {
     setLoading(true);
     setMsg("");
 
-    // 註冊帳號（寫進 supabase.auth，nickname 寫入 user_metadata）
+    // username 唯一性檢查
+    if (username.length < 3) {
+      setMsg("用戶名稱需至少 3 個字元！");
+      setLoading(false);
+      return;
+    }
+    const isUnique = await checkUsernameUnique(username);
+    if (!isUnique) {
+      setMsg("用戶名稱已被使用，請換一個！");
+      setLoading(false);
+      return;
+    }
+
+    // 註冊帳號（寫進 supabase.auth）
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nickname }
+        data: { username, name }
       }
     });
 
@@ -44,14 +80,14 @@ export default function Signup() {
     }
 
     // 註冊成功後，同步寫入 users table
-    // 注意！data.user 可能為 undefined，需安全檢查
     if (data && data.user) {
-      // 用 schema 只寫必要欄位即可
       const { error: insertErr } = await supabase.from("users").insert({
         id: data.user.id,
-        username: email,
-        name: nickname,
-        email
+        username,
+        name,
+        email,
+        avatar_url: data.user.user_metadata?.avatar_url ?? "",
+        // 你還可根據 users schema 再補 bio/social_links 等欄位
       });
       if (insertErr) {
         setMsg("註冊成功，但同步用戶資料時發生錯誤，請聯絡管理員！");
@@ -88,15 +124,37 @@ export default function Signup() {
           </button>
           <form onSubmit={handleSignup} className="space-y-5">
             <div>
-              <label className="block text-base font-semibold mb-1">暱稱</label>
+              <label className="block text-base font-semibold mb-1">用戶名稱 <span className="text-xs text-[#ffd700]">(全站唯一、僅能英數/底線)</span></label>
+              <input
+                type="text"
+                className={`w-full px-4 py-2 rounded-lg bg-[#0d1827] text-white border ${usernameAvailable === false ? "border-red-400" : "border-[#FFD700]/40"} focus:outline-none focus:ring-2 focus:ring-[#FFD700]`}
+                value={username}
+                onChange={(e) => handleUsernameChange(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                placeholder="設定您的唯一用戶名稱（如 numina_god）"
+                required
+                autoComplete="username"
+                minLength={3}
+                maxLength={32}
+              />
+              {username && (
+                <div className={`text-xs mt-1 ${usernameAvailable === false ? "text-red-400" : "text-green-400"}`}>
+                  {usernameAvailable === false
+                    ? "此用戶名稱已被註冊"
+                    : usernameAvailable === true && "此用戶名稱可用"}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-base font-semibold mb-1">名字/顯示名稱</label>
               <input
                 type="text"
                 className="w-full px-4 py-2 rounded-lg bg-[#0d1827] text-white border border-[#FFD700]/40 focus:outline-none focus:ring-2 focus:ring-[#FFD700]"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="輸入您的暱稱"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="您希望被稱呼的名字"
                 required
-                autoComplete="nickname"
+                autoComplete="name"
+                maxLength={32}
               />
             </div>
             <div>
