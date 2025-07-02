@@ -16,6 +16,7 @@ const DRAFT_KEY = "numina_blogebook_draft";
 
 export default function BlogeBookEdit() {
   const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [mainCat, setMainCat] = useState("小說");
@@ -30,7 +31,6 @@ export default function BlogeBookEdit() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const router = useRouter();
-  const [desc, setDesc] = useState("");
 
   const wonderStickers = [
     { name: "爆萌柴犬", url: "/stickers/dog1.png" },
@@ -56,6 +56,7 @@ export default function BlogeBookEdit() {
         setPayMode(d.payMode || "free");
         setPayPrice(d.payPrice || "");
         setCoverPreview(d.coverPreview || null);
+        setDesc(d.desc || "");
         setShowLoadDraft(false);
       } catch {}
     }
@@ -97,7 +98,6 @@ export default function BlogeBookEdit() {
     copy.splice(idx + dir, 0, item);
     setBlocks(copy);
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function handleFileUpload(idx: number, files: FileList | null, isMulti = false) {
     if (!files) return;
     const arr = Array.from(files);
@@ -115,7 +115,7 @@ export default function BlogeBookEdit() {
   // 儲存草稿
   function saveDraft() {
     const draft = {
-      title, coverPreview, mainCat, tags, blocks, payMode, payPrice
+      title, coverPreview, mainCat, tags, blocks, payMode, payPrice, desc
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     setShowDraftMsg(true);
@@ -142,22 +142,33 @@ export default function BlogeBookEdit() {
     return url;
   }
 
+  // 取得當前用戶
+  const [authorId, setAuthorId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setAuthorId(user?.id ?? null);
+    });
+  }, []);
+
   // 發布
   async function publish() {
     setLoading(true);
     setMsg("");
 
-      //檢查封面檔案
-    console.log("封面檔案", coverFile);  // ⭐️ 這是第一行
+    // 檢查必填
+    if (!title || !authorId) {
+      setMsg("請輸入標題並登入會員！");
+      setLoading(false);
+      return;
+    }
 
-    // 1. 上傳封面圖片
+    // 上傳封面
     let coverUrl = "";
     if (coverFile) {
       coverUrl = await uploadToStorage(coverFile, "cover");
     }
-    console.log("產生 coverUrl", coverUrl);  // ⭐️ 這是取得網址後馬上 log
 
-    // 2. 上傳所有 blocks 內的檔案（圖片/音檔/PDF…），替換 blocks 的 value/preview 成公開網址
+    // 上傳所有 blocks 檔案
     const uploadBlockFiles = async (b: Block, idx: number): Promise<Block> => {
       if (!b.files || b.files.length === 0) return b;
       const urls = [];
@@ -169,7 +180,7 @@ export default function BlogeBookEdit() {
         ...b,
         value: urls.length === 1 ? urls[0] : undefined,
         preview: urls,
-        files: undefined // 儲存到 DB 不要放本地 File 物件
+        files: undefined
       };
     };
     const realBlocks = [];
@@ -177,9 +188,10 @@ export default function BlogeBookEdit() {
       realBlocks.push(await uploadBlockFiles(blocks[i], i));
     }
 
-    // 3. 組裝完整內容，寫入資料庫
+    // 整理payload，對齊schema
     const payload = {
       title,
+      desc,
       cover: coverUrl,
       main_cat: mainCat,
       tags,
@@ -187,6 +199,7 @@ export default function BlogeBookEdit() {
       pay_price: payPrice ? parseInt(payPrice) : 0,
       blocks: realBlocks,
       type: "blogebook",
+      author_id: authorId,
       created_at: new Date(),
     };
 
@@ -222,7 +235,7 @@ export default function BlogeBookEdit() {
             placeholder="請輸入BlogeBook標題"
           />
         </div>
-        {/* ⭐ 新增：簡介/描述欄位（放在標題下方） */}
+        {/* 簡介 */}
         <div className="mb-4 flex gap-3 items-center">
             <label className="text-[#ffd700] min-w-[62px]">簡介</label>
             <textarea
@@ -268,9 +281,7 @@ export default function BlogeBookEdit() {
           </div>
         </div>
 
-        {/* 積木內容編輯區（原樣保留） */}
-        {/* ...原有 blocks 編輯器 ... (保留你的所有設計) */}
-
+        {/* 積木內容編輯區 */}
         <div className="bg-[#1b2239] rounded-2xl p-6 mb-4">
           <div className="flex gap-2 flex-wrap mb-5">
             <button className="add-block-btn" onClick={() => addBlock("text")}>＋文字段落</button>

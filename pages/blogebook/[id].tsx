@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 
-// 定義 blocks 積木型別，避免 any
+// 定義 blocks 積木型別
 type Block = {
   type: string;
   value?: string;
@@ -14,15 +14,13 @@ type Block = {
 interface Work {
   id: string;
   title: string;
-  author_id?: string;
-  author?: string;
+  author_id: string;
   cover: string;
   tags: string[];
-  main_cat?: string;
+  main_cat: string;
   pay_mode: "free" | "sub" | "single" | "tip";
   pay_price: number;
   verified?: boolean;
-  subscribe?: boolean;
   desc?: string;
   created_at?: string;
   blocks?: Block[];
@@ -35,16 +33,38 @@ export default function BlogeBookReadPage() {
   const [b, setB] = useState<Work | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 取得作者暱稱（假如有需要顯示，這裡用users表，或只顯示ID）
+  const [authorName, setAuthorName] = useState<string>("");
+
   useEffect(() => {
     if (!id) return;
     async function fetchWork() {
       setLoading(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("works")
         .select("*")
         .eq("id", id)
         .single();
-      if (data) setB(data as Work);
+      if (data) {
+        setB(data as Work);
+
+        // 額外撈作者名稱（若users表有username/nickname）
+        if (data.author_id) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("nickname,username,email")
+            .eq("id", data.author_id)
+            .single();
+          setAuthorName(
+            userData?.nickname ||
+            userData?.username ||
+            userData?.email?.split("@")[0] ||
+            "匿名作者"
+          );
+        } else {
+          setAuthorName("匿名作者");
+        }
+      }
       setLoading(false);
     }
     fetchWork();
@@ -62,14 +82,13 @@ export default function BlogeBookReadPage() {
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
       <Navbar />
       <div className="max-w-2xl w-full mx-auto flex-1 py-10 px-4">
-        {/* 警告不用管，可繼續用 <img>，等有空再改 next/image */}
         <img src={b.cover} alt={b.title} className="w-full h-64 object-cover rounded-2xl mb-6" />
         <div className="flex items-center gap-3 mb-2">
           <span className="font-bold text-3xl">{b.title}</span>
           {b.verified && <span className="inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>}
         </div>
         <div className="flex gap-2 items-center mb-2">
-          <span className="text-[#ffd700] font-bold">{b.author || "匿名作者"}</span>
+          <span className="text-[#ffd700] font-bold">{authorName || "匿名作者"}</span>
           <button className="bg-[#ffd700] text-[#0d1a2d] font-bold px-4 py-1 rounded-xl ml-3">訂閱作者</button>
         </div>
         <div className="flex gap-2 flex-wrap mb-4">
@@ -77,6 +96,7 @@ export default function BlogeBookReadPage() {
             <span key={i} className="bg-[#ffd70022] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold">#{tag}</span>
           ))}
         </div>
+        <div className="mb-2 text-white/80">{b.desc}</div>
         <div className="mb-6 text-[#ffd700] font-bold">
           {b.pay_mode === "single" && <>單篇購買 NT${b.pay_price}</>}
           {b.pay_mode === "sub" && <>訂閱制（請訂閱作者）</>}
