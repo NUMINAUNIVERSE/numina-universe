@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 // 檢查 username 是否唯一
 async function checkUsernameUnique(username: string): Promise<boolean> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("users")
     .select("id")
     .eq("username", username)
