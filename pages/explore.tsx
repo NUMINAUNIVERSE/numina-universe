@@ -1,8 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useState } from "react";
-
-// Link 沒用到，已移除
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 const tabList = [
   { key: "blogebook", label: "BlogeBook" },
@@ -11,14 +10,86 @@ const tabList = [
   { key: "authors", label: "熱門作者" }
 ];
 
+// 主題標籤可動態化
+const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
+
 export default function Explore() {
   const [tab, setTab] = useState("blogebook");
   const [tag, setTag] = useState("全部");
+  const [search, setSearch] = useState("");
+  // 各主分類資料
+  const [blogeBooks, setBlogeBooks] = useState<any[]>([]);
+  const [wonderlandWorks, setWonderlandWorks] = useState<any[]>([]);
+  const [stickers, setStickers] = useState<any[]>([]);
+  const [authors, setAuthors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // 假資料（後續可串API）
-  const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
-  // (假資料省略...)
+  // 初始化/切換分頁時動態抓資料
+  useEffect(() => {
+    setLoading(true);
 
+    async function fetchData() {
+      if (tab === "blogebook") {
+        // BlogeBook 分頁
+        let query = supabase
+          .from("works")
+          .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
+          .eq("type", "blogebook")
+          .order("created_at", { ascending: false })
+          .limit(18);
+
+        if (tag !== "全部") query = query.contains("tags", [tag]);
+        if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+        const { data } = await query;
+        setBlogeBooks(data ?? []);
+      }
+      if (tab === "wonderland") {
+        // WonderLand 分頁
+        let query = supabase
+          .from("works")
+          .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
+          .eq("type", "wonderland")
+          .order("created_at", { ascending: false })
+          .limit(18);
+
+        if (tag !== "全部") query = query.contains("tags", [tag]);
+        if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+        const { data } = await query;
+        setWonderlandWorks(data ?? []);
+      }
+      if (tab === "stickers") {
+        // 貼圖市集（以貼圖tag或main_cat為分類，篩選tag=貼圖）
+        let query = supabase
+          .from("works")
+          .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
+          .eq("type", "wonderland")
+          .or("main_cat.eq.貼圖,tags.cs.{貼圖}")
+          .order("created_at", { ascending: false })
+          .limit(24);
+
+        if (tag !== "全部") query = query.contains("tags", [tag]);
+        if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+
+        const { data } = await query;
+        setStickers(data ?? []);
+      }
+      if (tab === "authors") {
+        // 熱門作者排行（統計每位創作者作品數/訂閱/讚數等）
+        const { data } = await supabase
+          .from("users")
+          .select("id, nickname, avatar_url, verified, stats")
+          .order("stats.followers", { ascending: false })
+          .limit(30);
+        setAuthors(data ?? []);
+      }
+      setLoading(false);
+    }
+    fetchData();
+  }, [tab, tag, search]);
+
+  // UI結構
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
       <Navbar />
@@ -33,6 +104,8 @@ export default function Explore() {
             <input
               className="rounded-xl bg-[#222d44] text-white p-3 md:min-w-[320px] w-full"
               placeholder="搜尋內容、作者、標籤"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -50,29 +123,31 @@ export default function Explore() {
           ))}
         </div>
         {/* 標籤分類 */}
-        <div className="flex flex-wrap gap-3 mb-7">
-          {tags.map(x => (
-            <button
-              key={x}
-              className={`px-4 py-1 rounded-full font-bold border
-                ${tag === x ? "bg-[#FFD700] text-[#0d1827]" : "bg-[#222d44] text-white border-[#FFD700]/40"}`}
-              onClick={() => setTag(x)}
-            >{x}</button>
-          ))}
-        </div>
+        {tab !== "authors" && (
+          <div className="flex flex-wrap gap-3 mb-7">
+            {tags.map(x => (
+              <button
+                key={x}
+                className={`px-4 py-1 rounded-full font-bold border
+                  ${tag === x ? "bg-[#FFD700] text-[#0d1827]" : "bg-[#222d44] text-white border-[#FFD700]/40"}`}
+                onClick={() => setTag(x)}
+              >{x}</button>
+            ))}
+          </div>
+        )}
         {/* 主內容區 */}
         <div>
           {tab === "blogebook" && (
-            <BlogeBookExploreCardList />
+            loading ? <ExploreLoading /> : <BlogeBookExploreCardList list={blogeBooks} />
           )}
           {tab === "wonderland" && (
-            <WonderLandExploreCardList />
+            loading ? <ExploreLoading /> : <WonderLandExploreCardList list={wonderlandWorks} />
           )}
           {tab === "stickers" && (
-            <StickerMarketList />
+            loading ? <ExploreLoading /> : <StickerMarketList list={stickers} />
           )}
           {tab === "authors" && (
-            <AuthorRankList />
+            loading ? <ExploreLoading /> : <AuthorRankList list={authors} />
           )}
         </div>
       </div>
@@ -84,37 +159,49 @@ export default function Explore() {
   );
 }
 
-// 下方細部元件（不變、只補alt）
-function BlogeBookExploreCardList() {
+// 卡片區組件（資料props下放）
+function BlogeBookExploreCardList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-      {[1, 2, 3, 4, 5, 6].map(i => (
-        <div key={i} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
-          <img src="/demo/demo_blogebook.jpg" className="rounded-xl mb-2 h-[120px] object-cover" alt="BlogeBook封面" />
-          <div className="font-bold text-xl">BlogeBook 標題 {i}</div>
-          <div className="text-[#FFD700] text-sm mb-1">#小說 #心靈</div>
+      {list.map(w => (
+        <div key={w.id} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
+          <img src={w.cover} className="rounded-xl mb-2 h-[120px] object-cover" alt={w.title} />
+          <div className="font-bold text-xl">{w.title}</div>
+          <div className="text-[#FFD700] text-sm mb-1">
+            {(w.tags || []).map((tag: string, i: number) => (
+              <span key={i}>#{tag} </span>
+            ))}
+          </div>
           <div className="flex items-center gap-2 text-gray-400 text-sm">
             <img src="/demo/author1.jpg" className="w-7 h-7 rounded-full" alt="作者頭像" />
-            <span>作者名{ i }</span>
+            <span>{w.author?.nickname ?? "作者"}</span>
+            {w.author?.verified && <span className="ml-2 text-[#FFD700]">✔</span>}
             <span className="ml-2 text-[#FFD700]">訂閱</span>
           </div>
-          <div className="text-gray-300 text-sm">精采內容描述片段...</div>
+          <div className="text-gray-300 text-sm">{w.desc?.slice(0, 28) || "精采內容描述片段..."}</div>
         </div>
       ))}
     </div>
   );
 }
-function WonderLandExploreCardList() {
+function WonderLandExploreCardList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-      {[1, 2, 3, 4, 5, 6].map(i => (
-        <div key={i} className="bg-[#161e2d] rounded-2xl p-4 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
-          <img src="/demo/demo_illust.jpg" className="rounded-xl h-[180px] object-cover mb-2" alt="WonderLand封面" />
-          <div className="font-bold text-lg">WonderLand 作品 {i}</div>
-          <div className="text-[#FFD700] text-xs mb-1">#插畫 #IP角色</div>
+      {list.map(w => (
+        <div key={w.id} className="bg-[#161e2d] rounded-2xl p-4 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
+          <img src={w.cover} className="rounded-xl h-[180px] object-cover mb-2" alt={w.title} />
+          <div className="font-bold text-lg">{w.title}</div>
+          <div className="text-[#FFD700] text-xs mb-1">
+            {(w.tags || []).map((tag: string, i: number) => (
+              <span key={i}>#{tag} </span>
+            ))}
+          </div>
           <div className="flex items-center gap-2 text-gray-400 text-xs">
             <img src="/demo/author2.jpg" className="w-7 h-7 rounded-full" alt="作者頭像" />
-            <span>作者名{i}</span>
+            <span>{w.author?.nickname ?? "作者"}</span>
+            {w.author?.verified && <span className="ml-2 text-[#FFD700]">✔</span>}
             <span className="ml-2 text-[#FFD700]">訂閱</span>
           </div>
         </div>
@@ -122,30 +209,42 @@ function WonderLandExploreCardList() {
     </div>
   );
 }
-function StickerMarketList() {
+function StickerMarketList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-        <div key={i} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col items-center hover:scale-105 transition cursor-pointer">
-          <img src={`/demo/sticker${i % 2 + 1}.png`} className="w-20 h-20 rounded-xl mb-2" alt="貼圖預覽" />
-          <div className="font-bold text-[#FFD700]">貼圖包 {i}</div>
-          <div className="text-gray-400 text-xs mt-1">創作者名</div>
+      {list.map(w => (
+        <div key={w.id} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col items-center hover:scale-105 transition cursor-pointer">
+          <img src={w.cover} className="w-20 h-20 rounded-xl mb-2" alt={w.title} />
+          <div className="font-bold text-[#FFD700]">{w.title}</div>
+          <div className="text-gray-400 text-xs mt-1">{w.author?.nickname ?? "創作者"}</div>
         </div>
       ))}
     </div>
   );
 }
-function AuthorRankList() {
+function AuthorRankList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-      {[1, 2, 3, 4, 5, 6].map(i => (
-        <div key={i} className="bg-[#161e2d] rounded-2xl p-6 shadow-xl flex flex-col items-center gap-2">
-          <img src={`/demo/author${i % 3 + 1}.jpg`} className="w-20 h-20 rounded-full mb-2 border-4 border-[#FFD700]" alt="作者頭像" />
-          <div className="font-bold text-lg text-[#FFD700]">作者名 {i}</div>
-          <div className="text-gray-400 text-xs">累計粉絲：{Math.floor(Math.random()*5000)+1000}</div>
+      {list.map(u => (
+        <div key={u.id} className="bg-[#161e2d] rounded-2xl p-6 shadow-xl flex flex-col items-center gap-2">
+          <img src={u.avatar_url ?? "/demo/author1.jpg"} className="w-20 h-20 rounded-full mb-2 border-4 border-[#FFD700]" alt="作者頭像" />
+          <div className="font-bold text-lg text-[#FFD700]">{u.nickname}</div>
+          <div className="text-gray-400 text-xs">累計粉絲：{u.stats?.followers ?? 0}</div>
           <div className="mt-2"><button className="bg-[#FFD700] text-[#0d1827] rounded-full px-6 py-1 font-bold">訂閱</button></div>
         </div>
       ))}
     </div>
+  );
+}
+function ExploreLoading() {
+  return (
+    <div className="py-10 text-center text-[#ffd700] text-lg">載入中…</div>
+  );
+}
+function EmptyMsg() {
+  return (
+    <div className="py-10 text-center text-[#ffd700] text-lg">沒有找到相關作品！</div>
   );
 }
