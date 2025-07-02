@@ -10,10 +10,7 @@ interface Block {
   type: string;
   url: string;
 }
-interface Author {
-  nickname: string;
-  verified: boolean;
-}
+
 interface Work {
   id: string;
   type: string;
