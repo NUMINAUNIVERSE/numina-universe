@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import Image from "next/image";
 
 // 依 NUMINA UNIVERSE 20250701 schema
 interface ExploreWork {
@@ -41,7 +42,7 @@ export default function Explore() {
 
     async function fetchData() {
       // 查出作品
-      let type = tab === "stickers" ? "wonderland" : tab;
+      const type = tab === "stickers" ? "wonderland" : tab; // let → const
       let query = supabase
         .from("works")
         .select("id, title, author_id, cover_url, content, price, type, main_cat, tags")
@@ -154,7 +155,14 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
       {list.map(w => (
         <div key={w.id} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
-          <img src={w.cover_url} className="rounded-xl mb-2 h-[120px] object-cover" alt={w.title} />
+          <Image
+            src={w.cover_url || "/demo/cover.jpg"}
+            alt={w.title}
+            width={320}
+            height={120}
+            className="rounded-xl mb-2 h-[120px] object-cover"
+            unoptimized
+          />
           <div className="font-bold text-xl">{w.title}</div>
           <div className="text-[#FFD700] text-sm mb-1">
             {(w.tags || []).map((tag, i) => (
@@ -162,7 +170,14 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
             ))}
           </div>
           <div className="flex items-center gap-2 text-gray-400 text-sm">
-            <img src={w.author?.avatar_url ?? "/demo/author1.jpg"} className="w-7 h-7 rounded-full" alt="作者頭像" />
+            <Image
+              src={w.author?.avatar_url ?? "/demo/author1.jpg"}
+              alt="作者頭像"
+              width={28}
+              height={28}
+              className="w-7 h-7 rounded-full"
+              unoptimized
+            />
             <span>{w.author?.name ?? "未知用戶"}</span>
             <span className="ml-2 text-xs text-[#FFD700]">@{w.author?.username ?? "unknown"}</span>
           </div>
@@ -176,7 +191,14 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
     <div className={`grid ${tab === "wonderland" ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-4"} gap-6`}>
       {list.map(w => (
         <div key={w.id} className="bg-[#161e2d] rounded-2xl p-4 shadow-xl flex flex-col items-center hover:scale-105 transition cursor-pointer">
-          <img src={w.cover_url} className={tab === "wonderland" ? "rounded-xl h-[180px] object-cover mb-2" : "w-20 h-20 rounded-xl mb-2"} alt={w.title} />
+          <Image
+            src={w.cover_url || "/demo/cover.jpg"}
+            alt={w.title}
+            width={180}
+            height={tab === "wonderland" ? 180 : 80}
+            className={tab === "wonderland" ? "rounded-xl h-[180px] object-cover mb-2" : "w-20 h-20 rounded-xl mb-2"}
+            unoptimized
+          />
           <div className="font-bold text-lg">{w.title}</div>
           <div className="text-[#FFD700] text-xs mb-1">
             {(w.tags || []).map((tag, i) => (
@@ -184,7 +206,14 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
             ))}
           </div>
           <div className="flex items-center gap-2 text-gray-400 text-xs">
-            <img src={w.author?.avatar_url ?? "/demo/author2.jpg"} className="w-7 h-7 rounded-full" alt="作者頭像" />
+            <Image
+              src={w.author?.avatar_url ?? "/demo/author2.jpg"}
+              alt="作者頭像"
+              width={28}
+              height={28}
+              className="w-7 h-7 rounded-full"
+              unoptimized
+            />
             <span>{w.author?.name ?? "未知用戶"}</span>
             <span className="ml-2 text-[#FFD700] text-xs">@{w.author?.username ?? "unknown"}</span>
           </div>
