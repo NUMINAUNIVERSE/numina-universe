@@ -18,7 +18,7 @@ interface Work {
   blocks: Block[];
   imgs: string[];
   author_id: string;
-  like: number;
+  likes: number;      // 這裡改為 likes
   collect: number;
   share: number;
 }
@@ -57,7 +57,7 @@ export default function WonderWorkPage() {
     (async () => {
       const { data, error } = await supabase
         .from("works")
-        .select(`id, type, title, desc, cover, blocks, author_id, like, collect, share`)
+        .select(`id, type, title, desc, cover, blocks, author_id, likes, collect, share`)  // likes
         .eq("id", id)
         .eq("type", "wonderland")
         .single();
@@ -86,7 +86,7 @@ export default function WonderWorkPage() {
         blocks: blocks,
         imgs: imgs,
         author_id: data.author_id ?? "",
-        like: data.like ?? 0,
+        likes: data.likes ?? 0,    // likes
         collect: data.collect ?? 0,
         share: data.share ?? 0,
       });
