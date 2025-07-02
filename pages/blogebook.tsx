@@ -25,6 +25,9 @@ interface BlogeBook {
   type: "blogebook";
 }
 
+// 定義user_subscriptions 型別
+  type UserSub = { creator_id: string };
+
 export default function BlogeBookPage() {
   const [tab, setTab] = useState(0);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export default function BlogeBookPage() {
           .from("user_subscriptions")
           .select("creator_id")
           .eq("user_id", userId);
-        const followedIds = (subs ?? []).map((s: any) => s.creator_id);
+        const followedIds = (subs as UserSub[] ?? []).map(s => s.creator_id);
         if (followedIds.length > 0) {
           query = query.in("author_id", followedIds);
         } else {

@@ -40,7 +40,7 @@ export default function BlogeBookReadPage() {
     if (!id) return;
     async function fetchWork() {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("works")
         .select("*")
         .eq("id", id)
