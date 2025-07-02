@@ -122,7 +122,7 @@ export default function HomePage() {
           </div>
           <div className="overflow-hidden flex gap-4">
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${blogIndex * 320}px)` }}>
-              {hotBlogeBooks.map((item, idx) => (
+              {hotBlogeBooks.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
                   <img src={item.cover} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
@@ -150,7 +150,7 @@ export default function HomePage() {
           </div>
           <div className="overflow-hidden flex gap-4">
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${wlIndex * 320}px)` }}>
-              {hotWonderLand.map((item, idx) => (
+              {hotWonderLand.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
                   <img src={item.cover} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
@@ -169,7 +169,7 @@ export default function HomePage() {
           {loading ? (
             <div className="text-center text-[#ffd700] font-bold py-10">載入中…</div>
           ) : (
-            feed.map((item, idx) => (
+            feed.map(item => (
               <div key={item.id} className="bg-[#181f32] rounded-2xl shadow-xl mb-8 p-6 flex flex-col md:flex-row gap-5">
                 <img src={item.cover} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
                 <div className="flex flex-col flex-1">

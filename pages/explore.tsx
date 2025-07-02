@@ -3,34 +3,47 @@ import Footer from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+// 型別 interface 定義
+interface ExploreWork {
+  id: string;
+  title: string;
+  cover: string;
+  author: { nickname: string; verified: boolean };
+  desc: string;
+  tags: string[];
+  main_cat: string;
+}
+interface AuthorUser {
+  id: string;
+  nickname: string;
+  avatar_url: string;
+  verified: boolean;
+  stats: { followers: number };
+}
+
 const tabList = [
   { key: "blogebook", label: "BlogeBook" },
   { key: "wonderland", label: "WonderLand" },
   { key: "stickers", label: "貼圖市集" },
   { key: "authors", label: "熱門作者" }
 ];
-
-// 主題標籤可動態化
 const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
 
 export default function Explore() {
   const [tab, setTab] = useState("blogebook");
   const [tag, setTag] = useState("全部");
   const [search, setSearch] = useState("");
-  // 各主分類資料
-  const [blogeBooks, setBlogeBooks] = useState<any[]>([]);
-  const [wonderlandWorks, setWonderlandWorks] = useState<any[]>([]);
-  const [stickers, setStickers] = useState<any[]>([]);
-  const [authors, setAuthors] = useState<any[]>([]);
+  const [blogeBooks, setBlogeBooks] = useState<ExploreWork[]>([]);
+  const [wonderlandWorks, setWonderlandWorks] = useState<ExploreWork[]>([]);
+  const [stickers, setStickers] = useState<ExploreWork[]>([]);
+  const [authors, setAuthors] = useState<AuthorUser[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 初始化/切換分頁時動態抓資料
   useEffect(() => {
     setLoading(true);
 
     async function fetchData() {
       if (tab === "blogebook") {
-        // BlogeBook 分頁
         let query = supabase
           .from("works")
           .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
@@ -42,10 +55,9 @@ export default function Explore() {
         if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
 
         const { data } = await query;
-        setBlogeBooks(data ?? []);
+        setBlogeBooks((data as ExploreWork[]) ?? []);
       }
       if (tab === "wonderland") {
-        // WonderLand 分頁
         let query = supabase
           .from("works")
           .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
@@ -57,10 +69,9 @@ export default function Explore() {
         if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
 
         const { data } = await query;
-        setWonderlandWorks(data ?? []);
+        setWonderlandWorks((data as ExploreWork[]) ?? []);
       }
       if (tab === "stickers") {
-        // 貼圖市集（以貼圖tag或main_cat為分類，篩選tag=貼圖）
         let query = supabase
           .from("works")
           .select("id, title, cover, author:author_id(nickname, verified), desc, tags, main_cat")
@@ -73,23 +84,21 @@ export default function Explore() {
         if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
 
         const { data } = await query;
-        setStickers(data ?? []);
+        setStickers((data as ExploreWork[]) ?? []);
       }
       if (tab === "authors") {
-        // 熱門作者排行（統計每位創作者作品數/訂閱/讚數等）
         const { data } = await supabase
           .from("users")
           .select("id, nickname, avatar_url, verified, stats")
           .order("stats.followers", { ascending: false })
           .limit(30);
-        setAuthors(data ?? []);
+        setAuthors((data as AuthorUser[]) ?? []);
       }
       setLoading(false);
     }
     fetchData();
   }, [tab, tag, search]);
 
-  // UI結構
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
       <Navbar />
@@ -159,8 +168,8 @@ export default function Explore() {
   );
 }
 
-// 卡片區組件（資料props下放）
-function BlogeBookExploreCardList({ list }: { list: any[] }) {
+// 卡片區組件
+function BlogeBookExploreCardList({ list }: { list: ExploreWork[] }) {
   if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -169,7 +178,7 @@ function BlogeBookExploreCardList({ list }: { list: any[] }) {
           <img src={w.cover} className="rounded-xl mb-2 h-[120px] object-cover" alt={w.title} />
           <div className="font-bold text-xl">{w.title}</div>
           <div className="text-[#FFD700] text-sm mb-1">
-            {(w.tags || []).map((tag: string, i: number) => (
+            {(w.tags || []).map((tag, i) => (
               <span key={i}>#{tag} </span>
             ))}
           </div>
@@ -185,7 +194,7 @@ function BlogeBookExploreCardList({ list }: { list: any[] }) {
     </div>
   );
 }
-function WonderLandExploreCardList({ list }: { list: any[] }) {
+function WonderLandExploreCardList({ list }: { list: ExploreWork[] }) {
   if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -194,7 +203,7 @@ function WonderLandExploreCardList({ list }: { list: any[] }) {
           <img src={w.cover} className="rounded-xl h-[180px] object-cover mb-2" alt={w.title} />
           <div className="font-bold text-lg">{w.title}</div>
           <div className="text-[#FFD700] text-xs mb-1">
-            {(w.tags || []).map((tag: string, i: number) => (
+            {(w.tags || []).map((tag, i) => (
               <span key={i}>#{tag} </span>
             ))}
           </div>
@@ -209,7 +218,7 @@ function WonderLandExploreCardList({ list }: { list: any[] }) {
     </div>
   );
 }
-function StickerMarketList({ list }: { list: any[] }) {
+function StickerMarketList({ list }: { list: ExploreWork[] }) {
   if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
@@ -223,7 +232,7 @@ function StickerMarketList({ list }: { list: any[] }) {
     </div>
   );
 }
-function AuthorRankList({ list }: { list: any[] }) {
+function AuthorRankList({ list }: { list: AuthorUser[] }) {
   if (list.length === 0) return <EmptyMsg />;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
