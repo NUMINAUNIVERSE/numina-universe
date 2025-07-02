@@ -98,7 +98,7 @@ export default function BlogeBookEdit() {
     copy.splice(idx + dir, 0, item);
     setBlocks(copy);
   }
-  function handleFileUpload(idx: number, files: FileList | null, isMulti: boolean = false) {
+  function handleFileUpload(idx: number, files: FileList | null, _isMulti: boolean = false) {
     if (!files) return;
     const arr = Array.from(files);
     updateBlock(idx, {
