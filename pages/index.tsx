@@ -6,88 +6,84 @@ import { supabase } from "@/lib/supabaseClient";
 interface Work {
   id: string;
   title: string;
-  author: string;
-  authorVerified: boolean;
-  cover: string;
+  author_id: string;
+  cover_url: string;
   type: string;
-  excerpt?: string;
+  desc?: string;
   tags?: string[];
+  like?: number;
+}
+
+interface User {
+  id: string;
+  username: string;
+  name: string;
+  avatar_url?: string;
 }
 
 export default function HomePage() {
-  const [hotBlogeBooks, setHotBlogeBooks] = useState<Work[]>([]);
-  const [hotWonderLand, setHotWonderLand] = useState<Work[]>([]);
-  const [feed, setFeed] = useState<Work[]>([]);
+  const [hotBlogeBooks, setHotBlogeBooks] = useState<(Work & { author?: User })[]>([]);
+  const [hotWonderLand, setHotWonderLand] = useState<(Work & { author?: User })[]>([]);
+  const [feed, setFeed] = useState<(Work & { author?: User })[]>([]);
   const [loading, setLoading] = useState(true);
   const [blogIndex, setBlogIndex] = useState(0);
   const [wlIndex, setWLIndex] = useState(0);
 
-  // 首頁熱門/最新內容串接
   useEffect(() => {
     async function fetchAll() {
       setLoading(true);
-
-      // 熱門 BlogeBook
+      // 1. 熱門 BlogeBook
       const { data: blogData } = await supabase
         .from("works")
-        .select("id, title, cover, author:author_id(nickname, verified), type, desc, tags")
+        .select("id, title, author_id, cover_url, type, desc, tags, like")
         .eq("type", "blogebook")
         .order("like", { ascending: false })
         .limit(6);
 
-      // 熱門 WonderLand
+      // 2. 熱門 WonderLand
       const { data: wlData } = await supabase
         .from("works")
-        .select("id, title, cover, author:author_id(nickname, verified), type, desc, tags")
+        .select("id, title, author_id, cover_url, type, desc, tags, like")
         .eq("type", "wonderland")
         .order("like", { ascending: false })
         .limit(6);
 
-      // Feed 流（BlogeBook + WonderLand 各3最新）
+      // 3. Feed 流（BlogeBook + WonderLand 各3最新）
       const { data: feedData } = await supabase
         .from("works")
-        .select("id, title, cover, author:author_id(nickname, verified), type, desc, tags")
+        .select("id, title, author_id, cover_url, type, desc, tags, like")
         .in("type", ["blogebook", "wonderland"])
         .order("created_at", { ascending: false })
         .limit(6);
 
-      // 資料格式化
-      setHotBlogeBooks(
-        (blogData ?? []).map(w => ({
-          id: w.id,
-          title: w.title,
-          author: w.author?.nickname || "創作者",
-          authorVerified: !!w.author?.verified,
-          cover: w.cover,
-          type: w.type,
-          excerpt: w.desc?.slice(0, 36) ?? "",
-          tags: w.tags ?? [],
-        }))
-      );
-      setHotWonderLand(
-        (wlData ?? []).map(w => ({
-          id: w.id,
-          title: w.title,
-          author: w.author?.nickname || "創作者",
-          authorVerified: !!w.author?.verified,
-          cover: w.cover,
-          type: w.type,
-          excerpt: w.desc?.slice(0, 36) ?? "",
-          tags: w.tags ?? [],
-        }))
-      );
-      setFeed(
-        (feedData ?? []).map(w => ({
-          id: w.id,
-          title: w.title,
-          author: w.author?.nickname || "創作者",
-          authorVerified: !!w.author?.verified,
-          cover: w.cover,
-          type: w.type,
-          excerpt: w.desc?.slice(0, 56) ?? "",
-          tags: w.tags ?? [],
-        }))
-      );
+      // === 合併所有作者 id ===
+      const allWorks = [...(blogData ?? []), ...(wlData ?? []), ...(feedData ?? [])];
+      const authorIds = Array.from(new Set(allWorks.map(w => w.author_id).filter(Boolean)));
+      let usersMap: Record<string, User> = {};
+
+      if (authorIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from("users")
+          .select("id, username, name, avatar_url")
+          .in("id", authorIds);
+        if (usersData) {
+          usersMap = usersData.reduce((map: Record<string, User>, user: User) => {
+            map[user.id] = user;
+            return map;
+          }, {});
+        }
+      }
+
+      // 作品附上作者物件
+      const attachAuthor = (list: Work[] | null | undefined) =>
+        (list ?? []).map(w => ({
+          ...w,
+          author: usersMap[w.author_id] || undefined,
+        }));
+
+      setHotBlogeBooks(attachAuthor(blogData));
+      setHotWonderLand(attachAuthor(wlData));
+      setFeed(attachAuthor(feedData));
       setLoading(false);
     }
     fetchAll();
@@ -124,12 +120,15 @@ export default function HomePage() {
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${blogIndex * 320}px)` }}>
               {hotBlogeBooks.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                  <img src={item.cover_url} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
                     {item.title}
-                    {item.authorVerified && <span className="ml-2 inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>}
                   </div>
-                  <div className="text-[#ffd700]">{item.author}</div>
+                  <div className="flex items-center gap-2 text-[#ffd700] text-sm">
+                    <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                    <span>{item.author?.name ?? "創作者"}</span>
+                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -152,12 +151,15 @@ export default function HomePage() {
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${wlIndex * 320}px)` }}>
               {hotWonderLand.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                  <img src={item.cover_url} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
                     {item.title}
-                    {item.authorVerified && <span className="ml-2 inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>}
                   </div>
-                  <div className="text-[#ffd700]">{item.author}</div>
+                  <div className="flex items-center gap-2 text-[#ffd700] text-sm">
+                    <img src={item.author?.avatar_url ?? "/demo/author2.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                    <span>{item.author?.name ?? "創作者"}</span>
+                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -171,16 +173,17 @@ export default function HomePage() {
           ) : (
             feed.map(item => (
               <div key={item.id} className="bg-[#181f32] rounded-2xl shadow-xl mb-8 p-6 flex flex-col md:flex-row gap-5">
-                <img src={item.cover} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
+                <img src={item.cover_url} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold text-lg text-white">{item.title}</span>
-                    {item.authorVerified && (
-                      <span className="ml-2 inline-block px-2 py-1 text-xs rounded-full bg-[#ffd700] text-[#0d1a2d] font-bold">✔️ 原創</span>
-                    )}
                   </div>
-                  <span className="text-[#ffd700] font-semibold mb-1">{item.author}</span>
-                  <p className="text-white/85 mb-2">{item.excerpt}</p>
+                  <div className="flex items-center gap-2 text-[#ffd700] text-sm mb-1">
+                    <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                    <span>{item.author?.name ?? "創作者"}</span>
+                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                  </div>
+                  <p className="text-white/85 mb-2">{item.desc?.slice(0, 56) || "精采內容描述片段..."}</p>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(item.tags || []).map((tag, i) => (
                       <span key={i} className="bg-[#ffd70033] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold">#{tag}</span>
