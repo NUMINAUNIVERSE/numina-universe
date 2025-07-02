@@ -39,7 +39,6 @@ export default function Signup() {
       setMsg("註冊失敗：" + error.message);
     } else {
       setMsg("註冊成功，請至信箱點擊驗證連結！");
-      // 3秒後跳轉登入
       setTimeout(() => window.location.href = "/login", 3000);
     }
     setLoading(false);
