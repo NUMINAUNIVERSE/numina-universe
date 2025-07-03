@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useUser, User } from "@supabase/auth-helpers-react";
 
-// 嚴格型別定義
+// 嚴格型別
 interface ChatRoom {
   id: string;
   name: string | null;
@@ -63,14 +63,14 @@ function GroupChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          const groupRooms: { id: string; name: string; avatar_url: string | null }[] =
-            (data as ChatRoomMember[])
-              .filter((item) => item.chat_rooms?.type === "group")
-              .map((item) => ({
-                id: item.room_id,
-                name: item.chat_rooms?.name || "群組聊天室",
-                avatar_url: item.chat_rooms?.avatar_url || null,
-              }));
+          // 正確型別 map
+          const groupRooms = (data as ChatRoomMember[])
+            .filter((item) => item.chat_rooms && item.chat_rooms.type === "group")
+            .map((item) => ({
+              id: item.room_id,
+              name: item.chat_rooms?.name ?? "群組聊天室",
+              avatar_url: item.chat_rooms?.avatar_url ?? null,
+            }));
           setGroups(groupRooms);
         }
         setLoading(false);
@@ -112,14 +112,13 @@ function DMChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          const dmRooms: { id: string; name: string; avatar_url: string | null }[] =
-            (data as ChatRoomMember[])
-              .filter((item) => item.chat_rooms?.type === "dm")
-              .map((item) => ({
-                id: item.room_id,
-                name: item.chat_rooms?.name || "私人聊天室",
-                avatar_url: item.chat_rooms?.avatar_url || null,
-              }));
+          const dmRooms = (data as ChatRoomMember[])
+            .filter((item) => item.chat_rooms && item.chat_rooms.type === "dm")
+            .map((item) => ({
+              id: item.room_id,
+              name: item.chat_rooms?.name ?? "私人聊天室",
+              avatar_url: item.chat_rooms?.avatar_url ?? null,
+            }));
           setDMs(dmRooms);
         }
         setLoading(false);
