@@ -6,7 +6,7 @@ import { useUser } from "@/lib/useUser";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SecurityPage() {
-  // const { user } = useUser(); // 先註解，等用到再加回來
+
   const [password, setPassword] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
