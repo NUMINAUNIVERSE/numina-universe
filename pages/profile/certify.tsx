@@ -52,7 +52,7 @@ export default function CertifyPage() {
     }
 
     // 寫入/更新資料表
-    const { error } = await supabase.from("user_certifications").upsert(
+    const { error } = await supabase.from("user_certifications").upsert([
       {
         user_id: user.id,
         desc,
@@ -60,7 +60,7 @@ export default function CertifyPage() {
         status: "審核中",
       },
       { onConflict: ["user_id"] }
-    );
+    ]);
     setLoading(false);
     if (error) {
       alert("申請失敗：" + error.message);
