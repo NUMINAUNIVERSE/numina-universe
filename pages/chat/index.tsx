@@ -5,6 +5,18 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useUser } from "@supabase/auth-helpers-react";
 
+// 定義 Supabase 資料型別
+interface ChatRoom {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+  type: string;
+}
+interface ChatRoomMember {
+  room_id: string;
+  chat_rooms: ChatRoom | null;
+}
+
 export default function ChatHome() {
   const [tab, setTab] = useState<"group" | "dm">("group");
   return (
@@ -47,10 +59,10 @@ function GroupChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          // 過濾 type=group
-          const groupRooms = data
-            .filter((item: any) => item.chat_rooms?.type === "group")
-            .map((item: any) => ({
+          // 正確型別定義
+          const groupRooms = (data as ChatRoomMember[])
+            .filter((item) => item.chat_rooms?.type === "group")
+            .map((item) => ({
               id: item.room_id,
               name: item.chat_rooms?.name ?? "群組聊天室",
               avatar_url: item.chat_rooms?.avatar_url ?? null,
@@ -96,10 +108,10 @@ function DMChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          // 過濾 type=dm
-          const dmRooms = data
-            .filter((item: any) => item.chat_rooms?.type === "dm")
-            .map((item: any) => ({
+          // 正確型別定義
+          const dmRooms = (data as ChatRoomMember[])
+            .filter((item) => item.chat_rooms?.type === "dm")
+            .map((item) => ({
               id: item.room_id,
               name: item.chat_rooms?.name ?? "私人聊天室",
               avatar_url: item.chat_rooms?.avatar_url ?? null,
