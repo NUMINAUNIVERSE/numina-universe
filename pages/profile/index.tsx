@@ -52,9 +52,14 @@ type Sticker = {
   title: string;
 };
 
-type Favorite = {
+type FavoriteRow = {
   work_id: string;
-  works: Work;
+  works: {
+    id: string;
+    cover: string;
+    title: string;
+    desc: string;
+  } | null;
 };
 
 export default function ProfilePage() {
@@ -87,12 +92,12 @@ export default function ProfilePage() {
       if (data) {
         setProfile({
           id: data.id,
-          name: data.name,
-          username: data.username,
-          bio: data.bio,
+          name: data.name || "",
+          username: data.username || "",
+          bio: data.bio || "",
           avatar_url: data.avatar_url || "/avatar-demo.png",
           cover_url: data.cover_url || "/cover-demo.jpg",
-          is_certified: !!data.is_verified,
+          is_certified: !!(data.is_verified || data.is_certified),
           fans_count: data.fans_count || 0,
           following_count: data.following_count || 0
         });
@@ -113,7 +118,13 @@ export default function ProfilePage() {
         .eq("author_id", profile.id)
         .eq("type", "blogebook")
         .order("created_at", { ascending: false });
-      setBlogebooks(blogs ?? []);
+      setBlogebooks(Array.isArray(blogs) ? blogs.map(b => ({
+        id: b.id || "",
+        cover: b.cover || "/cover-demo.jpg",
+        title: b.title || "",
+        desc: b.desc || ""
+      })) : []);
+
       // WonderLand
       const { data: wonders } = await supabase
         .from("works")
@@ -121,22 +132,57 @@ export default function ProfilePage() {
         .eq("author_id", profile.id)
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
-      setWonderlands(wonders ?? []);
-      // 收藏
-      const { data: favs } = await supabase
-        .from("favorites")
-        .select("work_id, works(id, cover, title, desc)")
-        .eq("user_id", profile.id)
-        .order("created_at", { ascending: false });
-      setFavorites(
-        favs?.map((f: Favorite) => f.works) ?? []
-      );
+      setWonderlands(Array.isArray(wonders) ? wonders.map(w => ({
+        id: w.id || "",
+        cover: w.cover || "/cover-demo.jpg",
+        title: w.title || "",
+        desc: w.desc || ""
+      })) : []);
+
+// 收藏
+const { data: favs } = await supabase
+  .from("favorites")
+  .select("work_id, works(id, cover, title, desc)")
+  .eq("user_id", profile.id)
+  .order("created_at", { ascending: false });
+
+setFavorites(
+  Array.isArray(favs)
+    ? favs.flatMap((f: FavoriteRow) => {
+        if (!f.works) return [];
+        // 若 f.works 是陣列
+        if (Array.isArray(f.works))
+          return f.works.map(work => ({
+            id: work.id || "",
+            cover: work.cover || "/cover-demo.jpg",
+            title: work.title || "",
+            desc: work.desc || ""
+          }));
+        // 否則是單一作品物件
+        return [{
+          id: f.works.id || "",
+          cover: f.works.cover || "/cover-demo.jpg",
+          title: f.works.title || "",
+          desc: f.works.desc || ""
+        }];
+      })
+    : []
+);
+
       // 貼圖
       const { data: stickersData } = await supabase
         .from("stickers")
         .select("id, img, title")
         .eq("user_id", profile.id);
-      setStickers(stickersData ?? []);
+      setStickers(
+        Array.isArray(stickersData)
+          ? stickersData.map(s => ({
+              id: s.id || "",
+              img: s.img || "/cover-demo.jpg",
+              title: s.title || ""
+            }))
+          : []
+      );
     };
     if (profile) fetchWorks();
   }, [profile]);
@@ -153,8 +199,7 @@ export default function ProfilePage() {
     };
     reader.readAsDataURL(file);
 
-    // 上傳到 supabase storage 或你設計的方案
-    // 範例寫法（請根據實際 storage bucket 調整）：
+    // 上傳到 supabase storage
     const fileExt = file.name.split('.').pop();
     const filePath = `cover/${profile.id}_${Date.now()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
