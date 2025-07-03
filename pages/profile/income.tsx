@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/utils/userContext"; // 你的用戶 context
+import { useUser } from "@supabase/auth-helpers-react"; // 你的用戶 context
 
 type PaymentRecord = {
   id: string;
@@ -14,7 +14,7 @@ type PaymentRecord = {
 };
 
 export default function Income() {
-  const { user } = useUser(); // 取登入 user
+  const user = useUser(); // 取登入 user
   const [tab, setTab] = useState<"all" | "paid" | "unpaid">("all");
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);

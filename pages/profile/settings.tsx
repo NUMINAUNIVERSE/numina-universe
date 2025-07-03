@@ -3,10 +3,10 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FiSettings, FiTrash2 } from "react-icons/fi";
 import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/hooks/useUser"; // 請用你的 useUser hook 或 AuthContext
+import { useUser } from "@supabase/auth-helpers-react"; // 請用你的 useUser hook 或 AuthContext
 
 export default function SettingsPage() {
-  const { user } = useUser();
+  const user = useUser();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

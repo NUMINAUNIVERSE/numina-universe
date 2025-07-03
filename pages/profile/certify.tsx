@@ -6,7 +6,7 @@ import { useUser } from "@supabase/auth-helpers-react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function CertifyPage() {
-  const { user } = useUser();
+  const user = useUser();
   const [status, setStatus] = useState<"未申請" | "審核中" | "已認證" | "未通過">("未申請");
   const [desc, setDesc] = useState("");
   const [file, setFile] = useState<File | null>(null);

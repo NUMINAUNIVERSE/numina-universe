@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/utils/userContext";
+import { useUser } from "@supabase/auth-helpers-react";
 
 type Order = {
   id: string;
@@ -15,7 +15,7 @@ type Order = {
 };
 
 export default function OrdersPage() {
-  const { user } = useUser();
+  const user = useUser();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
