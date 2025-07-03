@@ -59,7 +59,7 @@ type FavoriteRow = {
     cover: string;
     title: string;
     desc: string;
-  } | null;
+  }[]; // array!
 };
 
 export default function ProfilePage() {
@@ -83,7 +83,6 @@ export default function ProfilePage() {
         router.replace("/login");
         return;
       }
-      // users 資料表
       const { data } = await supabase
         .from("users")
         .select("*")
@@ -107,7 +106,7 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // 取得作品
+  // 取得作品、收藏、貼圖
   useEffect(() => {
     const fetchWorks = async () => {
       if (!profile) return;
@@ -139,7 +138,7 @@ export default function ProfilePage() {
         desc: w.desc || ""
       })) : []);
 
-// 收藏
+// 收藏（單對一/防呆處理）
 const { data: favs } = await supabase
   .from("favorites")
   .select("work_id, works(id, cover, title, desc)")
@@ -148,24 +147,18 @@ const { data: favs } = await supabase
 
 setFavorites(
   Array.isArray(favs)
-    ? favs.flatMap((f: FavoriteRow) => {
-        if (!f.works) return [];
-        // 若 f.works 是陣列
-        if (Array.isArray(f.works))
-          return f.works.map(work => ({
-            id: work.id || "",
-            cover: work.cover || "/cover-demo.jpg",
-            title: work.title || "",
-            desc: work.desc || ""
-          }));
-        // 否則是單一作品物件
-        return [{
-          id: f.works.id || "",
-          cover: f.works.cover || "/cover-demo.jpg",
-          title: f.works.title || "",
-          desc: f.works.desc || ""
-        }];
-      })
+    ? favs
+        .map((f: FavoriteRow) =>
+          Array.isArray(f.works) && f.works[0]
+            ? {
+                id: f.works[0].id || "",
+                cover: f.works[0].cover || "/cover-demo.jpg",
+                title: f.works[0].title || "",
+                desc: f.works[0].desc || ""
+              }
+            : null
+        )
+        .filter((w): w is Work => !!w)
     : []
 );
 
@@ -187,19 +180,17 @@ setFavorites(
     if (profile) fetchWorks();
   }, [profile]);
 
-  // 處理封面上傳（可串API）
+  // 處理封面上傳
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files?.[0] || !profile) return;
     const file = e.target.files[0];
     setUploading(true);
-    // 前端即時預覽
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCover(ev.target?.result as string);
     };
     reader.readAsDataURL(file);
 
-    // 上傳到 supabase storage
     const fileExt = file.name.split('.').pop();
     const filePath = `cover/${profile.id}_${Date.now()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
@@ -207,7 +198,6 @@ setFavorites(
       .upload(filePath, file, { upsert: true });
     if (!uploadError) {
       const { data } = supabase.storage.from("user-covers").getPublicUrl(filePath);
-      // 更新 DB
       await supabase.from("users").update({ cover_url: data.publicUrl }).eq("id", profile.id);
       setCover(data.publicUrl);
     }
@@ -225,14 +215,12 @@ setFavorites(
   return (
     <div className="min-h-screen bg-[#0d1827] text-white font-sans flex flex-col">
       <Navbar />
-      {/* 漢堡按鈕 */}
       <button
         className="fixed right-7 top-5 z-50 p-2 bg-[#151b2c] rounded-lg border-2 border-[#FFD700] hover:bg-[#FFD700] hover:text-[#151b2c] transition"
         onClick={() => setMenuOpen((o) => !o)}
       >
         {menuOpen ? <FiX size={30} /> : <FiMenu size={30} />}
       </button>
-      {/* 側邊選單 */}
       <div
         className={`fixed top-0 right-0 h-full w-64 bg-[#161e2d] shadow-2xl p-7 z-40 transition-transform duration-200 ${menuOpen ? "translate-x-0" : "translate-x-full"}`}
       >
@@ -247,9 +235,7 @@ setFavorites(
           </a>
         ))}
       </div>
-      {/* 頁面主體 */}
       <div className="w-full max-w-5xl mx-auto px-4 pt-7 pb-12">
-        {/* 封面 + 編輯 */}
         <div className="relative rounded-2xl overflow-hidden h-44 md:h-64 bg-gradient-to-r from-[#203264] to-[#10131c] flex items-center justify-center">
           <img src={cover || "/cover-demo.jpg"} alt="封面圖" className="absolute w-full h-full object-cover object-center" />
           <div className="absolute right-6 bottom-5 z-10">
@@ -270,7 +256,6 @@ setFavorites(
             {uploading && <span className="ml-3 text-xs text-[#FFD700] animate-pulse">上傳中...</span>}
           </div>
         </div>
-        {/* 頭貼與基本資訊 */}
         <div className="relative flex items-end mt-[-52px] md:mt-[-70px] ml-4 md:ml-10">
           <img
             src={profile.avatar_url || "/avatar-demo.png"}
@@ -298,7 +283,6 @@ setFavorites(
             <div className="text-gray-100 mt-2 max-w-xl text-base">{profile.bio || "這位創作者還沒有填寫簡介。"}</div>
           </div>
         </div>
-        {/* Tab 區塊 */}
         <div className="flex space-x-4 mt-10 mb-2">
           {tabList.map((t) => (
             <button
@@ -314,7 +298,6 @@ setFavorites(
             </button>
           ))}
         </div>
-        {/* 卡片內容 */}
         <div className="pb-8">
           {tab === "blogebooks" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
