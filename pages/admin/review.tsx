@@ -14,24 +14,6 @@ interface ReviewItem {
   report: boolean;
 }
 
-// works 表 select 型別
-interface WorkRow {
-  id: string;
-  title: string;
-  status: string;
-  reported?: boolean | null;
-  author: { name: string } | null;
-}
-
-// comments 表 select 型別
-interface CommentRow {
-  id: string;
-  content: string;
-  status: string;
-  reported?: boolean | null;
-  user: { name: string } | null;
-}
-
 export default function AdminReview() {
   const [reviewList, setReviewList] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,20 +34,27 @@ export default function AdminReview() {
 
       const arr: ReviewItem[] = [];
 
-      // 作品審核，強制 as WorkRow[]
+      // 作品審核
       if (works && Array.isArray(works)) {
         arr.push(
-          ...works.map((w) => {
-            // 兼容 supabase bug，author 可能是陣列
-            const authorObj =
-              Array.isArray(w.author) && w.author.length > 0
-                ? w.author[0]
-                : w.author ?? null;
+          ...works.map((w: {
+            id: string;
+            title: string;
+            status: string;
+            reported?: boolean | null;
+            author: { name: string } | { name: string }[] | null;
+          }) => {
+            let authorName = "-";
+            if (Array.isArray(w.author) && w.author.length > 0) {
+              authorName = w.author[0]?.name ?? "-";
+            } else if (w.author && typeof w.author === "object") {
+              authorName = (w.author as { name: string }).name ?? "-";
+            }
             return {
               id: w.id,
               type: "作品" as const,
               title: w.title,
-              creator: authorObj?.name ?? "-",
+              creator: authorName,
               status: w.status === "pending" ? "待審核" : w.status,
               report: !!w.reported,
             };
@@ -73,20 +62,27 @@ export default function AdminReview() {
         );
       }
 
-      // 留言審核，強制 as CommentRow[]
+      // 留言審核
       if (comments && Array.isArray(comments)) {
         arr.push(
-          ...comments.map((c) => {
-            // 兼容 supabase bug，user 可能是陣列
-            const userObj =
-              Array.isArray(c.user) && c.user.length > 0
-                ? c.user[0]
-                : c.user ?? null;
+          ...comments.map((c: {
+            id: string;
+            content: string;
+            status: string;
+            reported?: boolean | null;
+            user: { name: string } | { name: string }[] | null;
+          }) => {
+            let userName = "-";
+            if (Array.isArray(c.user) && c.user.length > 0) {
+              userName = c.user[0]?.name ?? "-";
+            } else if (c.user && typeof c.user === "object") {
+              userName = (c.user as { name: string }).name ?? "-";
+            }
             return {
               id: c.id,
               type: "留言" as const,
               title: c.content.slice(0, 16),
-              creator: userObj?.name ?? "-",
+              creator: userName,
               status: c.status === "pending" ? "待審核" : c.status,
               report: !!c.reported,
             };
