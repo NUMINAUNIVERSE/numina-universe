@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FiShield } from "react-icons/fi";
-import { useUser } from "@/lib/useUser";
+
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SecurityPage() {
