@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-// 統一型別，對應 schema
+// 審核項目型別
 interface ReviewItem {
   id: string;
   type: "作品" | "留言";
@@ -14,20 +14,37 @@ interface ReviewItem {
   report: boolean;
 }
 
+// works 表 select 型別
+interface WorkRow {
+  id: string;
+  title: string;
+  status: string;
+  reported?: boolean | null;
+  author: { name: string } | null;
+}
+
+// comments 表 select 型別
+interface CommentRow {
+  id: string;
+  content: string;
+  status: string;
+  reported?: boolean | null;
+  user: { name: string } | null;
+}
+
 export default function AdminReview() {
   const [reviewList, setReviewList] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 取得作品/留言待審核
     const fetchReviews = async () => {
-      // 作品 works
+      // 作品
       const { data: works } = await supabase
         .from("works")
         .select("id, title, status, reported, author:author_id(name)")
         .order("created_at", { ascending: false });
 
-      // 留言 comments
+      // 留言
       const { data: comments } = await supabase
         .from("comments")
         .select("id, content, status, reported, user:user_id(name)")
@@ -35,43 +52,45 @@ export default function AdminReview() {
 
       const arr: ReviewItem[] = [];
 
-      // 作品審核
+      // 作品審核，強制 as WorkRow[]
       if (works && Array.isArray(works)) {
         arr.push(
-          ...works.map((w: {
-            id: string;
-            title: string;
-            author: { name: string } | null;
-            status: string;
-            reported?: boolean | null;
-          }) => ({
-            id: w.id,
-            type: "作品" as const,
-            title: w.title,
-            creator: w.author?.name ?? "-",
-            status: w.status === "pending" ? "待審核" : w.status,
-            report: !!w.reported,
-          }))
+          ...works.map((w) => {
+            // 兼容 supabase bug，author 可能是陣列
+            const authorObj =
+              Array.isArray(w.author) && w.author.length > 0
+                ? w.author[0]
+                : w.author ?? null;
+            return {
+              id: w.id,
+              type: "作品" as const,
+              title: w.title,
+              creator: authorObj?.name ?? "-",
+              status: w.status === "pending" ? "待審核" : w.status,
+              report: !!w.reported,
+            };
+          })
         );
       }
 
-      // 留言審核
+      // 留言審核，強制 as CommentRow[]
       if (comments && Array.isArray(comments)) {
         arr.push(
-          ...comments.map((c: {
-            id: string;
-            content: string;
-            user: { name: string } | null;
-            status: string;
-            reported?: boolean | null;
-          }) => ({
-            id: c.id,
-            type: "留言" as const,
-            title: c.content.slice(0, 16),
-            creator: c.user?.name ?? "-",
-            status: c.status === "pending" ? "待審核" : c.status,
-            report: !!c.reported,
-          }))
+          ...comments.map((c) => {
+            // 兼容 supabase bug，user 可能是陣列
+            const userObj =
+              Array.isArray(c.user) && c.user.length > 0
+                ? c.user[0]
+                : c.user ?? null;
+            return {
+              id: c.id,
+              type: "留言" as const,
+              title: c.content.slice(0, 16),
+              creator: userObj?.name ?? "-",
+              status: c.status === "pending" ? "待審核" : c.status,
+              report: !!c.reported,
+            };
+          })
         );
       }
       setReviewList(arr);
@@ -81,7 +100,7 @@ export default function AdminReview() {
     fetchReviews();
   }, []);
 
-  // 審核操作
+  // 通過審核
   const handleApprove = async (id: string, type: "作品" | "留言") => {
     if (type === "作品") {
       await supabase.from("works").update({ status: "approved" }).eq("id", id);
@@ -92,6 +111,7 @@ export default function AdminReview() {
     location.reload();
   };
 
+  // 拒絕審核
   const handleReject = async (id: string, type: "作品" | "留言") => {
     if (type === "作品") {
       await supabase.from("works").update({ status: "rejected" }).eq("id", id);
