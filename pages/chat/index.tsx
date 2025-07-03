@@ -12,11 +12,40 @@ interface ChatRoom {
   avatar_url: string | null;
   type: "group" | "dm" | string;
 }
-interface ChatRoomMember {
+interface RawChatRoomMember {
   room_id: string;
-  chat_rooms: ChatRoom | null;
+  chat_rooms: {
+    id: string;
+    name: string | null;
+    avatar_url: string | null;
+    type: string;
+  } | null;
   user_id: string;
   id: string;
+}
+
+// 對前端可用資料做 parse 處理
+function parseChatRoomList(
+  data: unknown,
+  type: "group" | "dm"
+): { id: string; name: string; avatar_url: string | null }[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(
+      (item) =>
+        typeof item === "object" &&
+        item !== null &&
+        "chat_rooms" in item &&
+        item.chat_rooms &&
+        item.chat_rooms.type === type
+    )
+    .map((item) => ({
+      id: (item as RawChatRoomMember).room_id,
+      name:
+        (item as RawChatRoomMember).chat_rooms?.name ??
+        (type === "group" ? "群組聊天室" : "私人聊天室"),
+      avatar_url: (item as RawChatRoomMember).chat_rooms?.avatar_url ?? null,
+    }));
 }
 
 export default function ChatHome() {
@@ -27,15 +56,27 @@ export default function ChatHome() {
       <div className="max-w-3xl mx-auto pt-10 pb-16 px-4 w-full flex flex-col">
         <div className="flex mb-5">
           <button
-            className={`py-3 px-7 rounded-t-lg font-bold text-lg ${tab === "group" ? "bg-[#FFD700] text-[#0d1827]" : "bg-[#161e2d] text-white"}`}
+            className={`py-3 px-7 rounded-t-lg font-bold text-lg ${
+              tab === "group"
+                ? "bg-[#FFD700] text-[#0d1827]"
+                : "bg-[#161e2d] text-white"
+            }`}
             onClick={() => setTab("group")}
             type="button"
-          >群組聊天室</button>
+          >
+            群組聊天室
+          </button>
           <button
-            className={`py-3 px-7 rounded-t-lg font-bold text-lg ml-2 ${tab === "dm" ? "bg-[#FFD700] text-[#0d1827]" : "bg-[#161e2d] text-white"}`}
+            className={`py-3 px-7 rounded-t-lg font-bold text-lg ml-2 ${
+              tab === "dm"
+                ? "bg-[#FFD700] text-[#0d1827]"
+                : "bg-[#161e2d] text-white"
+            }`}
             onClick={() => setTab("dm")}
             type="button"
-          >私人訊息</button>
+          >
+            私人訊息
+          </button>
         </div>
         <div className="flex-1">
           {tab === "group" ? <GroupChatList /> : <DMChatList />}
@@ -63,15 +104,7 @@ function GroupChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          // 正確型別 map
-          const groupRooms = (data as ChatRoomMember[])
-            .filter((item) => item.chat_rooms && item.chat_rooms.type === "group")
-            .map((item) => ({
-              id: item.room_id,
-              name: item.chat_rooms?.name ?? "群組聊天室",
-              avatar_url: item.chat_rooms?.avatar_url ?? null,
-            }));
-          setGroups(groupRooms);
+          setGroups(parseChatRoomList(data, "group"));
         }
         setLoading(false);
       });
@@ -112,14 +145,7 @@ function DMChatList() {
       .eq("user_id", user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          const dmRooms = (data as ChatRoomMember[])
-            .filter((item) => item.chat_rooms && item.chat_rooms.type === "dm")
-            .map((item) => ({
-              id: item.room_id,
-              name: item.chat_rooms?.name ?? "私人聊天室",
-              avatar_url: item.chat_rooms?.avatar_url ?? null,
-            }));
-          setDMs(dmRooms);
+          setDMs(parseChatRoomList(data, "dm"));
         }
         setLoading(false);
       });
