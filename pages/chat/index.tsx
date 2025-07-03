@@ -6,12 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useUser, User } from "@supabase/auth-helpers-react";
 
 // 嚴格型別
-interface ChatRoom {
-  id: string;
-  name: string | null;
-  avatar_url: string | null;
-  type: "group" | "dm" | string;
-}
+
 interface RawChatRoomMember {
   room_id: string;
   chat_rooms: {
