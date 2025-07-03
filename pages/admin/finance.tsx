@@ -1,13 +1,34 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+interface Finance {
+  id: string;
+  user_id: string;
+  type: string;
+  amount: number;
+  status: string;
+  users?: { name: string };
+}
 
 export default function AdminFinance() {
-  const incomes = [
-    { id: 1, name: "宇宙詩人", type: "訂閱", amount: 3200, status: "已結算" },
-    { id: 2, name: "Jolie藝術家", type: "單品販售", amount: 1200, status: "待結算" },
-    { id: 3, name: "小紅人", type: "打賞", amount: 500, status: "已結算" },
-  ];
+  const [incomes, setIncomes] = useState<Finance[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchFinance = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("finances")
+        .select("id, user_id, type, amount, status, users(name)")
+        .order("created_at", { ascending: false });
+      if (!error && data) setIncomes(data as Finance[]);
+      setLoading(false);
+    };
+    fetchFinance();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -28,14 +49,20 @@ export default function AdminFinance() {
               </tr>
             </thead>
             <tbody>
-              {incomes.map((i) => (
-                <tr key={i.id} className="border-b border-[#FFD700]/10">
-                  <td className="py-2 px-3">{i.name}</td>
-                  <td className="py-2 px-3">{i.type}</td>
-                  <td className="py-2 px-3">{i.amount}</td>
-                  <td className="py-2 px-3">{i.status}</td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={4}>載入中…</td></tr>
+              ) : incomes.length === 0 ? (
+                <tr><td colSpan={4} className="text-gray-400">暫無數據</td></tr>
+              ) : (
+                incomes.map((i) => (
+                  <tr key={i.id} className="border-b border-[#FFD700]/10">
+                    <td className="py-2 px-3">{i.users?.name || "-"}</td>
+                    <td className="py-2 px-3">{i.type}</td>
+                    <td className="py-2 px-3">{i.amount}</td>
+                    <td className="py-2 px-3">{i.status}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

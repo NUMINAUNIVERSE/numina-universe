@@ -1,15 +1,83 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// Supabase 設定
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function AdminDashboard() {
-  // 假數據，可串API
-  const stats = [
-    { title: "總用戶", value: 1342, color: "#FFD700" },
-    { title: "總創作者", value: 156, color: "#F7C873" },
-    { title: "作品總數", value: 2409, color: "#FFD700" },
-    { title: "待審內容", value: 11, color: "#F44336" }
-  ];
+  const [stats, setStats] = useState([
+    { title: "總用戶", value: 0, color: "#FFD700" },
+    { title: "總創作者", value: 0, color: "#F7C873" },
+    { title: "作品總數", value: 0, color: "#FFD700" },
+    { title: "待審內容", value: 0, color: "#F44336" }
+  ]);
+
+  const [recentReview, setRecentReview] = useState<
+    { type: string; title: string; author: string; status: string; action: string }[]
+  >([]);
+
+  useEffect(() => {
+    // 串接後台總覽數據
+    const fetchStats = async () => {
+      // 用戶總數
+      const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true });
+      // 創作者總數
+      const { count: creatorCount } = await supabase
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "creator");
+      // 作品總數
+      const { count: worksCount } = await supabase.from("works").select("*", { count: "exact", head: true });
+      // 待審內容
+      const { count: reviewCount } = await supabase
+        .from("works")
+        .select("*", { count: "exact", head: true })
+        .eq("review_status", "pending");
+      setStats([
+        { title: "總用戶", value: userCount ?? 0, color: "#FFD700" },
+        { title: "總創作者", value: creatorCount ?? 0, color: "#F7C873" },
+        { title: "作品總數", value: worksCount ?? 0, color: "#FFD700" },
+        { title: "待審內容", value: reviewCount ?? 0, color: "#F44336" }
+      ]);
+    };
+
+    // 近期待審內容
+    const fetchReview = async () => {
+      const { data } = await supabase
+        .from("works")
+        .select("id, title, author_id, review_status")
+        .eq("review_status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      // 查作者名
+      let rows: { type: string; title: string; author: string; status: string; action: string }[] = [];
+      if (data && data.length) {
+        for (const row of data) {
+          let authorName = "未知";
+          if (row.author_id) {
+            const { data: author } = await supabase.from("users").select("name").eq("id", row.author_id).single();
+            authorName = author?.name ?? "未知";
+          }
+          rows.push({
+            type: "BlogeBook",
+            title: row.title,
+            author: authorName,
+            status: "待審核",
+            action: "審核"
+          });
+        }
+      }
+      setRecentReview(rows);
+    };
+
+    fetchStats();
+    fetchReview();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -47,20 +115,19 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-[#FFD700]/10">
-                  <td className="py-2 px-3">BlogeBook</td>
-                  <td className="py-2 px-3">AI革命下的創作自由</td>
-                  <td className="py-2 px-3">宇宙詩人</td>
-                  <td className="py-2 px-3 text-[#F44336]">待審核</td>
-                  <td className="py-2 px-3"><button className="text-[#FFD700] underline">審核</button></td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-3">檢舉</td>
-                  <td className="py-2 px-3">貼圖包 #484 被舉報抄襲</td>
-                  <td className="py-2 px-3">瑪奇朵</td>
-                  <td className="py-2 px-3 text-[#FFD700]">已檢舉</td>
-                  <td className="py-2 px-3"><button className="text-[#FFD700] underline">處理</button></td>
-                </tr>
+                {recentReview.length > 0 ? recentReview.map((r, i) => (
+                  <tr key={i} className="border-b border-[#FFD700]/10">
+                    <td className="py-2 px-3">{r.type}</td>
+                    <td className="py-2 px-3">{r.title}</td>
+                    <td className="py-2 px-3">{r.author}</td>
+                    <td className="py-2 px-3 text-[#F44336]">{r.status}</td>
+                    <td className="py-2 px-3"><button className="text-[#FFD700] underline">{r.action}</button></td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td className="py-2 px-3" colSpan={5}>暫無待審內容</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

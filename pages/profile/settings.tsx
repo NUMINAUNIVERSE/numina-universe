@@ -18,7 +18,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("users")
         .select("name, username, email, lang")
         .eq("id", user.id)

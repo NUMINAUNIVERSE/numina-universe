@@ -1,14 +1,88 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { supabase } from "@/utils/supabaseClient";
+
+interface ReviewItem {
+  id: string;
+  type: string;
+  title: string;
+  creator: string;
+  status: string;
+  report: boolean;
+}
 
 export default function AdminReview() {
-  // 假資料
-  const reviewList = [
-    { id: 1, type: "BlogeBook", title: "生成式AI的未來", creator: "宇宙詩人", status: "待審核", report: false },
-    { id: 2, type: "WonderLand貼圖", title: "貓咪宇宙貼圖包", creator: "Jolie藝術家", status: "被檢舉", report: true },
-    { id: 3, type: "留言", title: "這個內容不合適", creator: "小紅人", status: "待審核", report: true }
-  ];
+  const [reviewList, setReviewList] = useState<ReviewItem[]>([]);
+
+  useEffect(() => {
+    // 範例: 假設你有 works, comments, stickers 各種表，合併查詢（你可以根據實際資料結構調整）
+    const fetchReviews = async () => {
+      let works = await supabase
+        .from("works")
+        .select("id, title, author_name:author_id(name), status, reported")
+        .order("created_at", { ascending: false });
+      let comments = await supabase
+        .from("comments")
+        .select("id, content, user_name:user_id(name), status, reported")
+        .order("created_at", { ascending: false });
+      // 你可以加貼圖或其他內容型態
+
+      let arr: ReviewItem[] = [];
+
+      // 作品審核
+      if (works.data) {
+        arr.push(
+          ...works.data.map((w: any) => ({
+            id: w.id,
+            type: "作品",
+            title: w.title,
+            creator: w.author_name || "-",
+            status: w.status === "pending" ? "待審核" : w.status,
+            report: w.reported ?? false
+          }))
+        );
+      }
+      // 留言審核
+      if (comments.data) {
+        arr.push(
+          ...comments.data.map((c: any) => ({
+            id: c.id,
+            type: "留言",
+            title: c.content.slice(0, 16),
+            creator: c.user_name || "-",
+            status: c.status === "pending" ? "待審核" : c.status,
+            report: c.reported ?? false
+          }))
+        );
+      }
+      setReviewList(arr);
+    };
+
+    fetchReviews();
+  }, []);
+
+  // 內容審核通過/下架範例，依內容型態調用不同API
+  const handleApprove = async (id: string, type: string) => {
+    if (type === "作品") {
+      await supabase.from("works").update({ status: "approved" }).eq("id", id);
+    }
+    if (type === "留言") {
+      await supabase.from("comments").update({ status: "approved" }).eq("id", id);
+    }
+    location.reload();
+  };
+
+  const handleReject = async (id: string, type: string) => {
+    if (type === "作品") {
+      await supabase.from("works").update({ status: "rejected" }).eq("id", id);
+    }
+    if (type === "留言") {
+      await supabase.from("comments").update({ status: "rejected" }).eq("id", id);
+    }
+    location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -30,20 +104,26 @@ export default function AdminReview() {
               </tr>
             </thead>
             <tbody>
-              {reviewList.map((item) => (
-                <tr key={item.id} className="border-b border-[#FFD700]/10">
-                  <td className="py-2 px-3">{item.type}</td>
-                  <td className="py-2 px-3">{item.title}</td>
-                  <td className="py-2 px-3">{item.creator}</td>
-                  <td className={`py-2 px-3 ${item.report ? 'text-[#F44336]' : ''}`}>
-                    {item.report ? "被檢舉" : item.status}
-                  </td>
-                  <td className="py-2 px-3">
-                    <button className="text-[#FFD700] underline mr-3">通過</button>
-                    <button className="text-[#F44336] underline">下架</button>
-                  </td>
+              {reviewList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-gray-400 py-6">目前無需審核內容</td>
                 </tr>
-              ))}
+              ) : (
+                reviewList.map((item) => (
+                  <tr key={item.id} className="border-b border-[#FFD700]/10">
+                    <td className="py-2 px-3">{item.type}</td>
+                    <td className="py-2 px-3">{item.title}</td>
+                    <td className="py-2 px-3">{item.creator}</td>
+                    <td className={`py-2 px-3 ${item.report ? 'text-[#F44336]' : ''}`}>
+                      {item.report ? "被檢舉" : item.status}
+                    </td>
+                    <td className="py-2 px-3">
+                      <button className="text-[#FFD700] underline mr-3" onClick={() => handleApprove(item.id, item.type)}>通過</button>
+                      <button className="text-[#F44336] underline" onClick={() => handleReject(item.id, item.type)}>下架</button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

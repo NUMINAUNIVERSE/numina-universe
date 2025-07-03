@@ -27,7 +27,7 @@ export default function OrdersPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         setOrders(data || []);
         setLoading(false);
       });

@@ -1,26 +1,82 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/utils/supabaseClient";
+
+interface UserApply {
+  id: string;
+  name: string;
+  desc: string;
+  status: string;
+}
+interface RoleUser {
+  id: string;
+  name: string;
+  role: string;
+  is_verified: boolean;
+}
 
 export default function AdminPermission() {
-  // 假資料
-  const applyList = [
-    { id: 1, name: "Jolie藝術家", desc: "專職插畫師，申請藍勾勾", status: "待審核" },
-    { id: 2, name: "宇宙詩人", desc: "BlogeBook原創申請", status: "已通過" },
-    { id: 3, name: "小紅人", desc: "貼圖包創作者，申請專屬標章", status: "待審核" }
-  ];
-  const roleList = [
-    { id: 1, name: "Jolie藝術家", role: "creator", certified: false },
-    { id: 2, name: "宇宙詩人", role: "creator", certified: true },
-    { id: 3, name: "小紅人", role: "user", certified: false }
-  ];
+  // 狀態
+  const [applyList, setApplyList] = useState<UserApply[]>([]);
+  const [roleList, setRoleList] = useState<RoleUser[]>([]);
+
+  // 載入資料
+  useEffect(() => {
+    // 1. 載入認證申請 (這裡假設 desc 與 status 皆來自 users 表或另外的 apply/certify 表)
+    const fetchApplies = async () => {
+      // 範例: 假設用 users.is_verified, users.role 管理身份、用desc欄位管理申請說明
+      let { data, error } = await supabase
+        .from("users")
+        .select("id, name, desc, is_verified, role")
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        // 尚未認證的創作者
+        const apply = data
+          .filter((u: any) => u.role === "creator" && u.is_verified === false)
+          .map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            desc: u.desc || "無補充說明",
+            status: "待審核"
+          }));
+        setApplyList(apply);
+
+        // 2. 用戶/創作者列表
+        setRoleList(
+          data.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            role: u.role,
+            is_verified: u.is_verified
+          }))
+        );
+      }
+    };
+
+    fetchApplies();
+  }, []);
+
+  // 通過認證
+  const handleCertify = async (userId: string) => {
+    await supabase.from("users").update({ is_verified: true }).eq("id", userId);
+    // 通常你會在這裡加個通知/彈窗
+    location.reload();
+  };
+
+  // 取消認證
+  const handleUncertify = async (userId: string) => {
+    await supabase.from("users").update({ is_verified: false }).eq("id", userId);
+    location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-12 w-full">
         <div className="text-2xl font-bold text-[#FFD700] mb-6">權限管理 & 原創認證審核</div>
-
-        {/* 藍勾勾申請審核 */}
+        {/* 原創認證申請 */}
         <div className="bg-[#161e2d] rounded-xl p-6 mb-8 shadow-lg">
           <div className="text-lg font-bold text-[#FFD700] mb-3">原創作者認證申請</div>
           <table className="w-full table-auto text-left">
@@ -33,22 +89,27 @@ export default function AdminPermission() {
               </tr>
             </thead>
             <tbody>
-              {applyList.map(app => (
-                <tr key={app.id} className="border-b border-[#FFD700]/10">
-                  <td className="py-2 px-3">{app.name}</td>
-                  <td className="py-2 px-3">{app.desc}</td>
-                  <td className="py-2 px-3">{app.status}</td>
-                  <td className="py-2 px-3">
-                    {app.status === "待審核"
-                      ? <>
-                          <button className="text-[#FFD700] underline mr-3">通過</button>
-                          <button className="text-[#F44336] underline">拒絕</button>
-                        </>
-                      : <span className="text-green-400">已處理</span>
-                    }
-                  </td>
+              {applyList.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center text-gray-400 py-6">目前無待審核認證</td>
                 </tr>
-              ))}
+              ) : (
+                applyList.map(app => (
+                  <tr key={app.id} className="border-b border-[#FFD700]/10">
+                    <td className="py-2 px-3">{app.name}</td>
+                    <td className="py-2 px-3">{app.desc}</td>
+                    <td className="py-2 px-3">{app.status}</td>
+                    <td className="py-2 px-3">
+                      <button className="text-[#FFD700] underline mr-3" onClick={() => handleCertify(app.id)}>
+                        通過
+                      </button>
+                      <button className="text-[#F44336] underline" onClick={() => handleUncertify(app.id)}>
+                        拒絕
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -70,15 +131,19 @@ export default function AdminPermission() {
                   <td className="py-2 px-3">{user.name}</td>
                   <td className="py-2 px-3">{user.role === "creator" ? "創作者" : "一般用戶"}</td>
                   <td className="py-2 px-3">
-                    {user.certified
+                    {user.is_verified
                       ? <span className="text-[#FFD700] font-bold">藍勾勾</span>
                       : <span className="text-gray-400">—</span>
                     }
                   </td>
                   <td className="py-2 px-3">
-                    {user.certified
-                      ? <button className="text-[#F44336] underline">取消認證</button>
-                      : <button className="text-[#FFD700] underline">給予認證</button>
+                    {user.is_verified
+                      ? <button className="text-[#F44336] underline" onClick={() => handleUncertify(user.id)}>
+                        取消認證
+                      </button>
+                      : <button className="text-[#FFD700] underline" onClick={() => handleCertify(user.id)}>
+                        給予認證
+                      </button>
                     }
                   </td>
                 </tr>

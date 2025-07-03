@@ -52,6 +52,11 @@ type Sticker = {
   title: string;
 };
 
+type Favorite = {
+  work_id: string;
+  works: Work;
+};
+
 export default function ProfilePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<"blogebooks" | "wonderlands" | "favorites" | "stickers">("blogebooks");
@@ -74,7 +79,7 @@ export default function ProfilePage() {
         return;
       }
       // users 資料表
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
@@ -87,7 +92,7 @@ export default function ProfilePage() {
           bio: data.bio,
           avatar_url: data.avatar_url || "/avatar-demo.png",
           cover_url: data.cover_url || "/cover-demo.jpg",
-          is_certified: !!data.is_certified,
+          is_certified: !!data.is_verified,
           fans_count: data.fans_count || 0,
           following_count: data.following_count || 0
         });
@@ -124,7 +129,7 @@ export default function ProfilePage() {
         .eq("user_id", profile.id)
         .order("created_at", { ascending: false });
       setFavorites(
-        favs?.map((f: any) => f.works) ?? []
+        favs?.map((f: Favorite) => f.works) ?? []
       );
       // 貼圖
       const { data: stickersData } = await supabase

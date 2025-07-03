@@ -43,7 +43,7 @@ export default function Income() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         setRecords(data || []);
         setLoading(false);
       });
@@ -104,7 +104,7 @@ export default function Income() {
                   tab==="all"?true:
                   tab==="paid"?r.status==="success":
                   r.status!=="success"
-                ).map((r,i)=>(
+                ).map((r,idx)=>(
                   <tr key={r.id} className="border-b border-[#FFD700]/10 last:border-b-0">
                     <td className="py-2">{r.created_at.slice(0,10)}</td>
                     <td>{r.type}</td>

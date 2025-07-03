@@ -1,12 +1,35 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+interface Announce {
+  id: string;
+  title: string;
+  content: string;
+  date: string; // or Date, 視欄位型別而定
+  created_at?: string;
+  updated_at?: string;
+}
 
 export default function AdminAnnounce() {
-  const announceList = [
-    { id: 1, title: "平台正式啟動公告", date: "2025-07-01", content: "NUMINA UNIVERSE 現正熱烈上線，歡迎創作者加入！" },
-    { id: 2, title: "6/30系統維護通知", date: "2025-06-30", content: "本平台將於6/30 23:00~02:00進行例行維護，請提前儲存創作。" }
-  ];
+  const [announceList, setAnnounceList] = useState<Announce[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchAnnounces = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("announces")
+        .select("id, title, content, date, created_at, updated_at")
+        .order("date", { ascending: false });
+      if (!error && data) setAnnounceList(data as Announce[]);
+      setLoading(false);
+    };
+    fetchAnnounces();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
       <Navbar />
@@ -17,17 +40,23 @@ export default function AdminAnnounce() {
         </div>
         <div className="bg-[#161e2d] rounded-xl p-6 shadow-lg mb-6">
           <div className="font-bold text-lg text-[#FFD700] mb-4">公告列表</div>
-          <ul>
-            {announceList.map(a => (
-              <li key={a.id} className="mb-6 border-b border-[#FFD700]/20 pb-3">
-                <div className="text-lg font-bold">{a.title}</div>
-                <div className="text-xs text-gray-400 mb-2">{a.date}</div>
-                <div className="mb-2">{a.content}</div>
-                <button className="text-[#FFD700] underline text-sm mr-2">編輯</button>
-                <button className="text-red-500 underline text-sm">刪除</button>
-              </li>
-            ))}
-          </ul>
+          {loading ? (
+            <div>載入中…</div>
+          ) : (
+            <ul>
+              {announceList.map(a => (
+                <li key={a.id} className="mb-6 border-b border-[#FFD700]/20 pb-3">
+                  <div className="text-lg font-bold">{a.title}</div>
+                  <div className="text-xs text-gray-400 mb-2">{a.date || a.created_at?.slice(0, 10)}</div>
+                  <div className="mb-2">{a.content}</div>
+                  {/* 實際開發時要串接編輯、刪除功能 */}
+                  <button className="text-[#FFD700] underline text-sm mr-2" disabled>編輯</button>
+                  <button className="text-red-500 underline text-sm" disabled>刪除</button>
+                </li>
+              ))}
+              {announceList.length === 0 && <li className="text-gray-400">暫無公告</li>}
+            </ul>
+          )}
         </div>
       </div>
       <Footer />

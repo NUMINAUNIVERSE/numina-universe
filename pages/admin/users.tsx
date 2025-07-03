@@ -1,14 +1,35 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+type UserRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  certified: boolean;
+  status: string;
+};
 
 export default function AdminUsers() {
-  const users = [
-    { id: 1, name: "宇宙詩人", email: "user1@numina.com", role: "creator", certified: true, status: "正常" },
-    { id: 2, name: "Jolie藝術家", email: "user2@numina.com", role: "creator", certified: false, status: "正常" },
-    { id: 3, name: "小紅人", email: "user3@numina.com", role: "user", certified: false, status: "停權" },
-    { id: 4, name: "王大明", email: "user4@numina.com", role: "user", certified: false, status: "正常" }
-  ];
+  const [users, setUsers] = useState<UserRow[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("id, name, email, role, certified, status")
+        .order("created_at", { ascending: false });
+      setUsers((data as UserRow[]) ?? []);
+    };
+    fetchUsers();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -31,7 +52,7 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {users.length > 0 ? users.map((u) => (
                 <tr key={u.id} className="border-b border-[#FFD700]/10">
                   <td className="py-2 px-3">{u.name}</td>
                   <td className="py-2 px-3">{u.email}</td>
@@ -48,7 +69,11 @@ export default function AdminUsers() {
                     <button className="text-blue-400 underline">查看</button>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td className="py-2 px-3" colSpan={6}>暫無用戶資料</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
