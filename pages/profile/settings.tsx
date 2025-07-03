@@ -1,30 +1,61 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FiSettings, FiTrash2 } from "react-icons/fi";
+import { supabase } from "@/lib/supabaseClient";
+import { useUser } from "@/hooks/useUser"; // 請用你的 useUser hook 或 AuthContext
 
-// 從用戶資料預設值撈資料
 export default function SettingsPage() {
-  // 假設有 API/Context 會拿到這些初始值
-  const [name, setName] = useState("男神");
-  const [username, setUsername] = useState("nushen"); // username
-  const [email, setEmail] = useState("nushen@numinauniverse.com");
+  const { user } = useUser();
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [lang, setLang] = useState("zh-TW");
   const [notify, setNotify] = useState(true);
   const [msg, setMsg] = useState("");
 
+  // 載入目前用戶資料
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("name, username, email, lang")
+        .eq("id", user.id)
+        .single();
+      if (data) {
+        setName(data.name || "");
+        setUsername(data.username || "");
+        setEmail(data.email || "");
+        setLang(data.lang || "zh-TW");
+      }
+    })();
+  }, [user]);
+
   // 儲存設定
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setMsg("設定已儲存！");
-    // TODO: 串接 Supabase users table, PATCH { name, username, email, lang, notify }
-    // 例如:
-    // await supabase.from('users').update({ name, username, ... }).eq('id', userId);
+    if (!user) return;
+    const { error } = await supabase
+      .from("users")
+      .update({
+        name,
+        username,
+        email,
+        lang,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+    if (error) {
+      setMsg("儲存失敗，請重試");
+    } else {
+      setMsg("設定已儲存！");
+    }
   }
   function handleDelete() {
     if (window.confirm("確定要刪除帳號嗎？此動作無法復原！")) {
-      // TODO: API
       setMsg("（MVP僅顯示訊息，未真實刪除）");
+      // 未真實刪除帳號，僅提示訊息
     }
   }
 

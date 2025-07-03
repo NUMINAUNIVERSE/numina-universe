@@ -1,22 +1,53 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/utils/supabaseClient";
+import { useUser } from "@/utils/userContext"; // 你的用戶 context
 
-const fakeIncome = {
-  thisMonth: 28380,
-  lastMonth: 17300,
-  growth: "+64%",
-  paid: 25000,
-  unpaid: 3380,
-  history: [
-    { date: "2025/06/25", type: "單篇銷售", work: "宇宙智慧手冊", amount: 480, status: "已結算" },
-    { date: "2025/06/23", type: "訂閱分潤", work: "未來文明思維", amount: 1200, status: "未結算" },
-    { date: "2025/06/21", type: "打賞", work: "星際少女", amount: 600, status: "已結算" }
-  ]
+type PaymentRecord = {
+  id: string;
+  created_at: string;
+  type: string;
+  amount: number;
+  status: string;
+  note: string | null;
 };
 
 export default function Income() {
+  const { user } = useUser(); // 取登入 user
   const [tab, setTab] = useState<"all" | "paid" | "unpaid">("all");
+  const [records, setRecords] = useState<PaymentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 統計用
+  let paid = 0, unpaid = 0, thisMonth = 0, lastMonth = 0;
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  // 資料處理
+  records.forEach(rec => {
+    const recDate = new Date(rec.created_at);
+    if (rec.status === "success") paid += rec.amount;
+    else unpaid += rec.amount;
+    if (recDate >= thisMonthStart) thisMonth += rec.amount;
+    else if (recDate >= lastMonthStart && recDate < thisMonthStart) lastMonth += rec.amount;
+  });
+  const growth = lastMonth ? `${Math.round(((thisMonth - lastMonth) / lastMonth) * 100)}%` : "+100%";
+
+  useEffect(() => {
+    if (!user?.id) return;
+    setLoading(true);
+    supabase
+      .from("user_payments")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        setRecords(data || []);
+        setLoading(false);
+      });
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col">
@@ -28,21 +59,21 @@ export default function Income() {
           <div className="flex-1">
             <div className="text-xl font-bold text-[#FFD700]">本月總收益</div>
             <div className="text-4xl font-extrabold mt-1 mb-2">
-              ${fakeIncome.thisMonth.toLocaleString()}
-              <span className="text-base ml-4 text-green-400">{fakeIncome.growth}</span>
+              ${thisMonth.toLocaleString()}
+              <span className="text-base ml-4 text-green-400">{growth}</span>
             </div>
             <div className="text-base text-gray-300">
-              上月：<span className="text-[#FFD700]">${fakeIncome.lastMonth.toLocaleString()}</span>
+              上月：<span className="text-[#FFD700]">${lastMonth.toLocaleString()}</span>
             </div>
           </div>
           <div className="flex flex-col gap-2 text-right">
             <div>
               <span className="text-gray-200">已結算</span>
-              <div className="text-xl text-[#FFD700] font-bold">${fakeIncome.paid.toLocaleString()}</div>
+              <div className="text-xl text-[#FFD700] font-bold">${paid.toLocaleString()}</div>
             </div>
             <div>
               <span className="text-gray-200">未結算</span>
-              <div className="text-xl text-red-300 font-bold">${fakeIncome.unpaid.toLocaleString()}</div>
+              <div className="text-xl text-red-300 font-bold">${unpaid.toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -55,32 +86,38 @@ export default function Income() {
         {/* 收益明細 */}
         <div className="bg-[#161e2d] rounded-xl p-5 shadow">
           <div className="text-lg font-bold text-[#FFD700] mb-3">近期收益明細</div>
-          <table className="w-full text-base">
-            <thead>
-              <tr className="border-b border-[#FFD700]/20 text-[#FFD700]">
-                <th className="font-bold py-2">日期</th>
-                <th className="font-bold">收益類型</th>
-                <th className="font-bold">作品</th>
-                <th className="font-bold">金額</th>
-                <th className="font-bold">狀態</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fakeIncome.history.filter(r=>
-                tab==="all"?true:
-                tab==="paid"?r.status==="已結算":
-                r.status==="未結算"
-              ).map((r,i)=>(
-                <tr key={i} className="border-b border-[#FFD700]/10 last:border-b-0">
-                  <td className="py-2">{r.date}</td>
-                  <td>{r.type}</td>
-                  <td>{r.work}</td>
-                  <td className="text-[#FFD700] font-bold">${r.amount}</td>
-                  <td className={r.status==="已結算"?"text-green-400":"text-red-300"}>{r.status}</td>
+          {loading ? (
+            <div className="py-10 text-center text-gray-400">載入中…</div>
+          ) : (
+            <table className="w-full text-base">
+              <thead>
+                <tr className="border-b border-[#FFD700]/20 text-[#FFD700]">
+                  <th className="font-bold py-2">日期</th>
+                  <th className="font-bold">類型</th>
+                  <th className="font-bold">備註</th>
+                  <th className="font-bold">金額</th>
+                  <th className="font-bold">狀態</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {records.filter(r=>
+                  tab==="all"?true:
+                  tab==="paid"?r.status==="success":
+                  r.status!=="success"
+                ).map((r,i)=>(
+                  <tr key={r.id} className="border-b border-[#FFD700]/10 last:border-b-0">
+                    <td className="py-2">{r.created_at.slice(0,10)}</td>
+                    <td>{r.type}</td>
+                    <td>{r.note || "-"}</td>
+                    <td className="text-[#FFD700] font-bold">${r.amount}</td>
+                    <td className={r.status==="success"?"text-green-400":"text-red-300"}>
+                      {r.status==="success"?"已結算":"未結算"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
       <Footer />

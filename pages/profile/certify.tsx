@@ -1,17 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FiAward } from "react-icons/fi";
+import { useUser } from "@/lib/useUser";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function CertifyPage() {
+  const { user } = useUser();
   const [status, setStatus] = useState<"未申請" | "審核中" | "已認證" | "未通過">("未申請");
   const [desc, setDesc] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  // 載入用戶過去的申請
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("user_certifications")
+        .select("desc,image_url,status")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+      if (data) {
+        setStatus(data.status || "審核中");
+        setDesc(data.desc || "");
+        setFileUrl(data.image_url || "");
+      }
+    })();
+  }, [user]);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("審核中");
-    // 這裡未來可呼叫API
+    if (!user) return;
+    setLoading(true);
+
+    // 先上傳圖檔
+    let image_url = fileUrl;
+    if (file) {
+      const { data, error } = await supabase.storage
+        .from("certify_uploads")
+        .upload(`${user.id}/${Date.now()}_${file.name}`, file, { upsert: true });
+      if (error) {
+        alert("圖檔上傳失敗：" + error.message);
+        setLoading(false);
+        return;
+      }
+      image_url = data?.path ? supabase.storage.from("certify_uploads").getPublicUrl(data.path).data.publicUrl : "";
+      setFileUrl(image_url);
+    }
+
+    // 寫入/更新資料表
+    const { error } = await supabase.from("user_certifications").upsert(
+      {
+        user_id: user.id,
+        desc,
+        image_url,
+        status: "審核中",
+      },
+      { onConflict: ["user_id"] }
+    );
+    setLoading(false);
+    if (error) {
+      alert("申請失敗：" + error.message);
+    } else {
+      setStatus("審核中");
+      alert("申請送出，請等待審核！");
+    }
   }
 
   return (
@@ -37,7 +93,7 @@ export default function CertifyPage() {
               onChange={e => setDesc(e.target.value)}
               required
               placeholder="請簡述你的創作背景、代表作、原創精神等"
-              disabled={status !== "未申請" && status !== "未通過"}
+              disabled={status === "審核中" || status === "已認證"}
             />
             <label className="text-[#FFD700] font-bold">上傳身份／作品證明圖檔（jpg/png）</label>
             <input
@@ -45,16 +101,21 @@ export default function CertifyPage() {
               accept="image/*"
               className="rounded-xl bg-[#222d44] text-white p-3"
               onChange={e => setFile(e.target.files?.[0] || null)}
-              disabled={status !== "未申請" && status !== "未通過"}
-              required={status === "未申請" || status === "未通過"}
+              disabled={status === "審核中" || status === "已認證"}
+              required={!fileUrl}
             />
             {file && <span className="text-sm text-[#FFD700]">{file.name}</span>}
+            {fileUrl && (
+              <div className="mt-2">
+                <img src={fileUrl} alt="已上傳" className="h-20 rounded shadow border border-[#FFD700]/40" />
+              </div>
+            )}
             <button
               type="submit"
-              disabled={status !== "未申請" && status !== "未通過"}
+              disabled={status === "審核中" || status === "已認證" || loading}
               className={`rounded-xl px-6 py-3 font-bold mt-3 ${status === "未申請" || status === "未通過"
                 ? "bg-[#FFD700] text-[#0d1827] hover:bg-[#ffe366] transition"
-                : "bg-gray-400 text-gray-600 cursor-not-allowed"}`}
+                : "bg-gray-400 text-gray-600 cursor-not-allowed"} ${loading ? "opacity-70" : ""}`}
             >
               {status === "未申請" || status === "未通過" ? "送出申請" : "送出申請"}
             </button>
