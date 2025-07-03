@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FiMenu, FiX, FiUpload } from "react-icons/fi";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/router";
 
 // 側邊選單

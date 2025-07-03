@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import { useUser } from "@/utils/userContext"; // 你的用戶 context
 
 type PaymentRecord = {
