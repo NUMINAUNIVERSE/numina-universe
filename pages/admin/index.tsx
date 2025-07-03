@@ -9,6 +9,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+type ReviewRow = {
+  type: string;
+  title: string;
+  author: string;
+  status: string;
+  action: string;
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState([
     { title: "總用戶", value: 0, color: "#FFD700" },
@@ -17,9 +25,7 @@ export default function AdminDashboard() {
     { title: "待審內容", value: 0, color: "#F44336" }
   ]);
 
-  const [recentReview, setRecentReview] = useState<
-    { type: string; title: string; author: string; status: string; action: string }[]
-  >([]);
+  const [recentReview, setRecentReview] = useState<ReviewRow[]>([]);
 
   useEffect(() => {
     // 串接後台總覽數據
@@ -54,8 +60,7 @@ export default function AdminDashboard() {
         .eq("review_status", "pending")
         .order("created_at", { ascending: false })
         .limit(5);
-      // 查作者名
-      let rows: { type: string; title: string; author: string; status: string; action: string }[] = [];
+      const rows: ReviewRow[] = [];
       if (data && data.length) {
         for (const row of data) {
           let authorName = "未知";
@@ -94,8 +99,8 @@ export default function AdminDashboard() {
         {/* 儀表板總覽 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           {stats.map((s, i) => (
-            <div key={i} className="bg-[#161e2d] rounded-xl py-8 flex flex-col items-center shadow-lg border-b-4" style={{borderColor: s.color}}>
-              <div className="text-2xl font-bold" style={{color: s.color}}>{s.value}</div>
+            <div key={i} className="bg-[#161e2d] rounded-xl py-8 flex flex-col items-center shadow-lg border-b-4" style={{ borderColor: s.color }}>
+              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</div>
               <div className="text-lg mt-2">{s.title}</div>
             </div>
           ))}

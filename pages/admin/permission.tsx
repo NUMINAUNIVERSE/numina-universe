@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/utils/supabaseClient";
 
+// 依據 schema 補型別
 interface UserApply {
   id: string;
   name: string;
@@ -23,10 +24,8 @@ export default function AdminPermission() {
 
   // 載入資料
   useEffect(() => {
-    // 1. 載入認證申請 (這裡假設 desc 與 status 皆來自 users 表或另外的 apply/certify 表)
     const fetchApplies = async () => {
-      // 範例: 假設用 users.is_verified, users.role 管理身份、用desc欄位管理申請說明
-      let { data, error } = await supabase
+      const { data } = await supabase
         .from("users")
         .select("id, name, desc, is_verified, role")
         .order("created_at", { ascending: false });
@@ -34,8 +33,8 @@ export default function AdminPermission() {
       if (data) {
         // 尚未認證的創作者
         const apply = data
-          .filter((u: any) => u.role === "creator" && u.is_verified === false)
-          .map((u: any) => ({
+          .filter((u: { role: string; is_verified: boolean }) => u.role === "creator" && !u.is_verified)
+          .map((u: { id: string; name: string; desc?: string }) => ({
             id: u.id,
             name: u.name,
             desc: u.desc || "無補充說明",
@@ -45,7 +44,7 @@ export default function AdminPermission() {
 
         // 2. 用戶/創作者列表
         setRoleList(
-          data.map((u: any) => ({
+          data.map((u: { id: string; name: string; role: string; is_verified: boolean }) => ({
             id: u.id,
             name: u.name,
             role: u.role,
@@ -54,14 +53,12 @@ export default function AdminPermission() {
         );
       }
     };
-
     fetchApplies();
   }, []);
 
   // 通過認證
   const handleCertify = async (userId: string) => {
     await supabase.from("users").update({ is_verified: true }).eq("id", userId);
-    // 通常你會在這裡加個通知/彈窗
     location.reload();
   };
 

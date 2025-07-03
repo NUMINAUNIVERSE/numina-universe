@@ -104,7 +104,7 @@ export default function Income() {
                   tab==="all"?true:
                   tab==="paid"?r.status==="success":
                   r.status!=="success"
-                ).map((r,idx)=>(
+                ).map((r,_idx)=>(
                   <tr key={r.id} className="border-b border-[#FFD700]/10 last:border-b-0">
                     <td className="py-2">{r.created_at.slice(0,10)}</td>
                     <td>{r.type}</td>

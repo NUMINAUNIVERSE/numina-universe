@@ -17,43 +17,54 @@ export default function AdminReview() {
   const [reviewList, setReviewList] = useState<ReviewItem[]>([]);
 
   useEffect(() => {
-    // 範例: 假設你有 works, comments, stickers 各種表，合併查詢（你可以根據實際資料結構調整）
+    // works, comments 多型態審核
     const fetchReviews = async () => {
-      let works = await supabase
+      const works = await supabase
         .from("works")
-        .select("id, title, author_name:author_id(name), status, reported")
+        .select("id, title, author:author_id(name), status, reported")
         .order("created_at", { ascending: false });
-      let comments = await supabase
+      const comments = await supabase
         .from("comments")
-        .select("id, content, user_name:user_id(name), status, reported")
+        .select("id, content, user:user_id(name), status, reported")
         .order("created_at", { ascending: false });
-      // 你可以加貼圖或其他內容型態
 
-      let arr: ReviewItem[] = [];
+      const arr: ReviewItem[] = [];
 
       // 作品審核
       if (works.data) {
         arr.push(
-          ...works.data.map((w: any) => ({
+          ...works.data.map((w: {
+            id: string;
+            title: string;
+            author: { name: string } | null;
+            status: string;
+            reported?: boolean | null;
+          }): ReviewItem => ({
             id: w.id,
             type: "作品",
             title: w.title,
-            creator: w.author_name || "-",
+            creator: w.author?.name || "-",
             status: w.status === "pending" ? "待審核" : w.status,
-            report: w.reported ?? false
+            report: w.reported ?? false,
           }))
         );
       }
       // 留言審核
       if (comments.data) {
         arr.push(
-          ...comments.data.map((c: any) => ({
+          ...comments.data.map((c: {
+            id: string;
+            content: string;
+            user: { name: string } | null;
+            status: string;
+            reported?: boolean | null;
+          }): ReviewItem => ({
             id: c.id,
             type: "留言",
             title: c.content.slice(0, 16),
-            creator: c.user_name || "-",
+            creator: c.user?.name || "-",
             status: c.status === "pending" ? "待審核" : c.status,
-            report: c.reported ?? false
+            report: c.reported ?? false,
           }))
         );
       }
@@ -63,7 +74,7 @@ export default function AdminReview() {
     fetchReviews();
   }, []);
 
-  // 內容審核通過/下架範例，依內容型態調用不同API
+  // 審核操作
   const handleApprove = async (id: string, type: string) => {
     if (type === "作品") {
       await supabase.from("works").update({ status: "approved" }).eq("id", id);
