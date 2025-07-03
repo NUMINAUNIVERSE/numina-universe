@@ -1,7 +1,9 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
+import { useUser } from "@supabase/auth-helpers-react";
 
 export default function ChatHome() {
   const [tab, setTab] = useState<"group" | "dm">("group");
@@ -31,49 +33,99 @@ export default function ChatHome() {
   );
 }
 
-// 模擬聊天室清單元件
 function GroupChatList() {
+  const user = useUser();
+  const [groups, setGroups] = useState<{id: string, name: string | null, avatar_url: string | null}[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    supabase
+      .from("chat_room_members")
+      .select("room_id, chat_rooms(id, name, avatar_url, type)")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          // 過濾 type=group
+          const groupRooms = data
+            .filter((item: any) => item.chat_rooms?.type === "group")
+            .map((item: any) => ({
+              id: item.room_id,
+              name: item.chat_rooms?.name ?? "群組聊天室",
+              avatar_url: item.chat_rooms?.avatar_url ?? null,
+            }));
+          setGroups(groupRooms);
+        }
+        setLoading(false);
+      });
+  }, [user]);
+
+  if (!user) return <div>請先登入</div>;
+  if (loading) return <div>載入中…</div>;
   return (
     <div>
       <div className="font-bold text-[#FFD700] text-lg mb-4">我的群組聊天室</div>
       <ul className="space-y-3">
-        <li>
-          <Link href="/chat/group/1" legacyBehavior>
-            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-              NUMINA 宇宙創作者群組 <span className="ml-2 text-sm text-[#FFD700]">99+ 未讀</span>
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/chat/group/2" legacyBehavior>
-            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-              WonderLand 畫師討論區
-            </a>
-          </Link>
-        </li>
+        {groups.length === 0 && <li>目前尚無群組聊天室</li>}
+        {groups.map(g => (
+          <li key={g.id}>
+            <Link href={`/chat/group/${g.id}`} legacyBehavior>
+              <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+                {g.name}
+              </a>
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   );
 }
+
 function DMChatList() {
+  const user = useUser();
+  const [dms, setDMs] = useState<{id: string, name: string | null, avatar_url: string | null}[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    supabase
+      .from("chat_room_members")
+      .select("room_id, chat_rooms(id, name, avatar_url, type)")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          // 過濾 type=dm
+          const dmRooms = data
+            .filter((item: any) => item.chat_rooms?.type === "dm")
+            .map((item: any) => ({
+              id: item.room_id,
+              name: item.chat_rooms?.name ?? "私人聊天室",
+              avatar_url: item.chat_rooms?.avatar_url ?? null,
+            }));
+          setDMs(dmRooms);
+        }
+        setLoading(false);
+      });
+  }, [user]);
+
+  if (!user) return <div>請先登入</div>;
+  if (loading) return <div>載入中…</div>;
   return (
     <div>
       <div className="font-bold text-[#FFD700] text-lg mb-4">私人訊息</div>
       <ul className="space-y-3">
-        <li>
-          <Link href="/chat/dm/andy" legacyBehavior>
-            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-              Andy（男神鐵粉） <span className="ml-2 text-xs text-[#FFD700]">2 則新訊息</span>
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/chat/dm/julia" legacyBehavior>
-            <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
-              Julia（插畫家）
-            </a>
-          </Link>
-        </li>
+        {dms.length === 0 && <li>目前尚無私人訊息</li>}
+        {dms.map(dm => (
+          <li key={dm.id}>
+            <Link href={`/chat/dm/${dm.id}`} legacyBehavior>
+              <a className="block bg-[#222d44] rounded-xl px-5 py-4 hover:bg-[#292f45] transition font-bold text-white">
+                {dm.name}
+              </a>
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   );

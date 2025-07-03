@@ -4,9 +4,10 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+// 統一型別，對應 schema
 interface ReviewItem {
   id: string;
-  type: string;
+  type: "作品" | "留言";
   title: string;
   creator: string;
   status: string;
@@ -15,67 +16,73 @@ interface ReviewItem {
 
 export default function AdminReview() {
   const [reviewList, setReviewList] = useState<ReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // works, comments 多型態審核
+    // 取得作品/留言待審核
     const fetchReviews = async () => {
-      const works = await supabase
+      // 作品 works
+      const { data: works } = await supabase
         .from("works")
-        .select("id, title, author:author_id(name), status, reported")
+        .select("id, title, status, reported, author:author_id(name)")
         .order("created_at", { ascending: false });
-      const comments = await supabase
+
+      // 留言 comments
+      const { data: comments } = await supabase
         .from("comments")
-        .select("id, content, user:user_id(name), status, reported")
+        .select("id, content, status, reported, user:user_id(name)")
         .order("created_at", { ascending: false });
 
       const arr: ReviewItem[] = [];
 
       // 作品審核
-      if (works.data) {
+      if (works && Array.isArray(works)) {
         arr.push(
-          ...works.data.map((w: {
+          ...works.map((w: {
             id: string;
             title: string;
             author: { name: string } | null;
             status: string;
             reported?: boolean | null;
-          }): ReviewItem => ({
+          }) => ({
             id: w.id,
-            type: "作品",
+            type: "作品" as const,
             title: w.title,
-            creator: w.author?.name || "-",
+            creator: w.author?.name ?? "-",
             status: w.status === "pending" ? "待審核" : w.status,
-            report: w.reported ?? false,
+            report: !!w.reported,
           }))
         );
       }
+
       // 留言審核
-      if (comments.data) {
+      if (comments && Array.isArray(comments)) {
         arr.push(
-          ...comments.data.map((c: {
+          ...comments.map((c: {
             id: string;
             content: string;
             user: { name: string } | null;
             status: string;
             reported?: boolean | null;
-          }): ReviewItem => ({
+          }) => ({
             id: c.id,
-            type: "留言",
+            type: "留言" as const,
             title: c.content.slice(0, 16),
-            creator: c.user?.name || "-",
+            creator: c.user?.name ?? "-",
             status: c.status === "pending" ? "待審核" : c.status,
-            report: c.reported ?? false,
+            report: !!c.reported,
           }))
         );
       }
       setReviewList(arr);
+      setLoading(false);
     };
 
     fetchReviews();
   }, []);
 
   // 審核操作
-  const handleApprove = async (id: string, type: string) => {
+  const handleApprove = async (id: string, type: "作品" | "留言") => {
     if (type === "作品") {
       await supabase.from("works").update({ status: "approved" }).eq("id", id);
     }
@@ -85,7 +92,7 @@ export default function AdminReview() {
     location.reload();
   };
 
-  const handleReject = async (id: string, type: string) => {
+  const handleReject = async (id: string, type: "作品" | "留言") => {
     if (type === "作品") {
       await supabase.from("works").update({ status: "rejected" }).eq("id", id);
     }
@@ -115,7 +122,11 @@ export default function AdminReview() {
               </tr>
             </thead>
             <tbody>
-              {reviewList.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-gray-400 py-6">載入中...</td>
+                </tr>
+              ) : reviewList.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center text-gray-400 py-6">目前無需審核內容</td>
                 </tr>
