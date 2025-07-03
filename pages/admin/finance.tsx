@@ -10,7 +10,7 @@ interface Finance {
   type: string;
   amount: number;
   status: string;
-  users?: { name: string };
+  users?: { name: string }[]; // <-- 改成陣列，安全相容
 }
 
 export default function AdminFinance() {
@@ -24,6 +24,8 @@ export default function AdminFinance() {
         .from("finances")
         .select("id, user_id, type, amount, status, users(name)")
         .order("created_at", { ascending: false });
+
+      // 型別安全：users 有可能是陣列，也有可能 undefined
       if (!error && data) setIncomes(data as Finance[]);
       setLoading(false);
     };
@@ -56,7 +58,10 @@ export default function AdminFinance() {
               ) : (
                 incomes.map((i) => (
                   <tr key={i.id} className="border-b border-[#FFD700]/10">
-                    <td className="py-2 px-3">{i.users?.name || "-"}</td>
+                    <td className="py-2 px-3">
+                      {/* users 欄位容錯，取第一個 name 或顯示 "-" */}
+                      {i.users && i.users.length > 0 ? i.users[0].name : "-"}
+                    </td>
                     <td className="py-2 px-3">{i.type}</td>
                     <td className="py-2 px-3">{i.amount}</td>
                     <td className="py-2 px-3">{i.status}</td>
