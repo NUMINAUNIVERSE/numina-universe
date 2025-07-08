@@ -60,7 +60,7 @@ export default function Explore() {
       if (tag !== "全部") query = query.contains("tags", [tag]);
       if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
 
-      const { data: worksData, error } = await query;
+      const { data: worksData } = await query;
       const worksList: ExploreWork[] = worksData ?? [];
 
       // 取出所有作品作者 id

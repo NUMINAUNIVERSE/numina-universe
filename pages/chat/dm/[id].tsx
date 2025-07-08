@@ -31,67 +31,72 @@ export default function PrivateChatRoom() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // 取得訊息並 join sender info
-useEffect(() => {
-  if (!roomId) return;
-  setLoading(true);
-  supabase
-    .from("chat_messages")
-    .select(
-      `
-      id, room_id, sender_id, type, content, created_at,
-      sender:users(id, name, username, avatar_url)
-      `
-    )
-    .eq("room_id", roomId)
-    .order("created_at", { ascending: true })
-    .then(({ data, error }) => {
-      if (!error && data) {
-        // sender 修正
-        const normalized = data.map((m: any) => ({
-          ...m,
-          sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
-        })) as ChatMessage[];
-        setMessages(normalized);
-      }
-      setLoading(false);
+  useEffect(() => {
+    if (!roomId) return;
+    setLoading(true);
+    supabase
+      .from("chat_messages")
+      .select(
+        `
+        id, room_id, sender_id, type, content, created_at,
+        sender:users(id, name, username, avatar_url)
+        `
+      )
+      .eq("room_id", roomId)
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          // sender 型別修正（避免 any）
+          const normalized = data.map((m: unknown) => {
+            const msg = m as ChatMessage & {
+              sender: ChatMessage["sender"][] | ChatMessage["sender"];
+            };
+            return {
+              ...msg,
+              sender: Array.isArray(msg.sender) ? msg.sender[0] : msg.sender,
+            };
+          }) as ChatMessage[];
+          setMessages(normalized);
+        }
+        setLoading(false);
+        setTimeout(() => {
+          chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 150);
+      });
+  }, [roomId]);
+
+  // 發送訊息
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!msg.trim() || !roomId || !user) return;
+    const insertMsg = {
+      room_id: roomId as string,
+      sender_id: user.id,
+      type: "text",
+      content: msg.trim(),
+    };
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .insert([insertMsg])
+      .select(
+        `
+        id, room_id, sender_id, type, content, created_at,
+        sender:users(id, name, username, avatar_url)
+        `
+      );
+    if (!error && data && data.length > 0) {
+      const m = data[0];
+      const normalized = {
+        ...m,
+        sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
+      } as ChatMessage;
+      setMessages((prev) => [...prev, normalized]);
+      setMsg("");
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 150);
-    });
-}, [roomId]);
-
-  // 發送訊息
-async function handleSend(e: React.FormEvent) {
-  e.preventDefault();
-  if (!msg.trim() || !roomId || !user) return;
-  const insertMsg = {
-    room_id: roomId as string,
-    sender_id: user.id,
-    type: "text",
-    content: msg.trim(),
-  };
-  const { data, error } = await supabase
-    .from("chat_messages")
-    .insert([insertMsg])
-    .select(
-      `
-      id, room_id, sender_id, type, content, created_at,
-      sender:users(id, name, username, avatar_url)
-      `
-    );
-  if (!error && data && data.length > 0) {
-    const m = data[0];
-    const normalized = {
-      ...m,
-      sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
-    } as ChatMessage;
-    setMessages((prev) => [...prev, normalized]);
-    setMsg("");
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 150);
+    }
   }
-}
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">

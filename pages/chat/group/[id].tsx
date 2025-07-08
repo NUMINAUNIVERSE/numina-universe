@@ -59,10 +59,16 @@ export default function GroupChatRoom() {
         .eq("room_id", roomId)
         .order("created_at", { ascending: true });
       if (!error && data) {
-        const normalized = data.map((m: any) => ({
-          ...m,
-          sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
-        })) as ChatMessage[];
+        // sender 型別修正
+        const normalized = data.map((m: unknown) => {
+          const msg = m as ChatMessage & {
+            sender: ChatMessage["sender"][] | ChatMessage["sender"];
+          };
+          return {
+            ...msg,
+            sender: Array.isArray(msg.sender) ? msg.sender[0] : msg.sender,
+          };
+        }) as ChatMessage[];
         setMessages(normalized);
       }
     };
