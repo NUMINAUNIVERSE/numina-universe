@@ -4,18 +4,19 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 
-// 依 NUMINA UNIVERSE 20250701 schema
+// 根據 NUMINA UNIVERSE 20250703 Schema
 interface ExploreWork {
   id: string;
   title: string;
   author_id: string;
-  cover_url: string;
+  cover: string;
   content: string;
-  price: number;
+  pay_price: number;
   type: string;
   main_cat?: string;
   tags?: string[];
 }
+
 interface User {
   id: string;
   username: string;
@@ -42,21 +43,24 @@ export default function Explore() {
 
     async function fetchData() {
       // 查出作品
-      const type = tab === "stickers" ? "wonderland" : tab; // let → const
+      const type = tab === "stickers" ? "wonderland" : tab;
       let query = supabase
         .from("works")
-        .select("id, title, author_id, cover_url, content, price, type, main_cat, tags")
+        .select("id, title, author_id, cover, content, pay_price, type, main_cat, tags")
         .eq("type", type)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
         .order("created_at", { ascending: false })
         .limit(tab === "stickers" ? 24 : 18);
 
+      // 貼圖市集：主分類或tags包含"貼圖"
       if (tab === "stickers") {
         query = query.or("main_cat.eq.貼圖,tags.cs.{貼圖}");
       }
       if (tag !== "全部") query = query.contains("tags", [tag]);
       if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
 
-      const { data: worksData } = await query;
+      const { data: worksData, error } = await query;
       const worksList: ExploreWork[] = worksData ?? [];
 
       // 取出所有作品作者 id
@@ -156,7 +160,7 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
       {list.map(w => (
         <div key={w.id} className="bg-[#161e2d] rounded-2xl p-5 shadow-xl flex flex-col gap-3 hover:scale-105 transition cursor-pointer">
           <Image
-            src={w.cover_url || "/demo/cover.jpg"}
+            src={w.cover || "/demo/cover.jpg"}
             alt={w.title}
             width={320}
             height={120}
@@ -192,7 +196,7 @@ function ExploreCardList({ list, tab }: { list: (ExploreWork & { author?: User }
       {list.map(w => (
         <div key={w.id} className="bg-[#161e2d] rounded-2xl p-4 shadow-xl flex flex-col items-center hover:scale-105 transition cursor-pointer">
           <Image
-            src={w.cover_url || "/demo/cover.jpg"}
+            src={w.cover || "/demo/cover.jpg"}
             alt={w.title}
             width={180}
             height={tab === "wonderland" ? 180 : 80}

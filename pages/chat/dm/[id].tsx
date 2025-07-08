@@ -2,73 +2,96 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiImage, FiMusic, FiSmile } from "react-icons/fi";
 import { supabase } from "@/lib/supabaseClient";
+import { useUser } from "@supabase/auth-helpers-react";
+import { FiImage, FiMusic, FiSmile } from "react-icons/fi";
 
-interface DMMessage {
+interface ChatMessage {
   id: string;
   room_id: string;
   sender_id: string;
-  sender_name?: string;
   type: "text" | "image" | "sticker";
-  content: string; // 文字內容或圖片/貼圖網址
+  content: string;
   created_at: string;
+  sender: {
+    id: string;
+    name: string;
+    username: string;
+    avatar_url?: string;
+  } | null;
 }
 
 export default function PrivateChatRoom() {
   const router = useRouter();
   const { id: roomId } = router.query;
+  const user = useUser();
   const [msg, setMsg] = useState("");
-  const [messages, setMessages] = useState<DMMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // 這裡建議根據你登入系統取得當前 user
-  // 假設你有 useUser() hook 或其它方式
-  const userId = typeof window !== "undefined" ? window.localStorage.getItem("user_id") || "" : "";
-  const userName = typeof window !== "undefined" ? window.localStorage.getItem("user_name") || "我" : "我";
-
-  // 取得聊天室訊息
-  useEffect(() => {
-    if (!roomId) return;
-    setLoading(true);
-    supabase
-      .from("dm_messages")
-      .select("id, room_id, sender_id, type, content, created_at")
-      .eq("room_id", roomId)
-      .order("created_at", { ascending: true })
-      .then(async ({ data, error }) => {
-        if (!error && data) {
-          // 可以進一步查詢 sender 的暱稱資料（這邊簡化）
-          setMessages(data as DMMessage[]);
-        }
-        setLoading(false);
-        setTimeout(() => {
-          chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 150);
-      });
-    // 可再加上Realtime (subscription)自動刷新
-  }, [roomId]);
-
-  // 發送訊息
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!msg.trim() || !roomId || !userId) return;
-    const insertMsg = {
-      room_id: roomId,
-      sender_id: userId,
-      type: "text",
-      content: msg.trim(),
-    };
-    const { data, error } = await supabase.from("dm_messages").insert([insertMsg]).select();
-    if (!error && data && data.length > 0) {
-      setMessages(prev => [...prev, { ...data[0], sender_name: userName }]);
-      setMsg("");
+  // 取得訊息並 join sender info
+useEffect(() => {
+  if (!roomId) return;
+  setLoading(true);
+  supabase
+    .from("chat_messages")
+    .select(
+      `
+      id, room_id, sender_id, type, content, created_at,
+      sender:users(id, name, username, avatar_url)
+      `
+    )
+    .eq("room_id", roomId)
+    .order("created_at", { ascending: true })
+    .then(({ data, error }) => {
+      if (!error && data) {
+        // sender 修正
+        const normalized = data.map((m: any) => ({
+          ...m,
+          sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
+        })) as ChatMessage[];
+        setMessages(normalized);
+      }
+      setLoading(false);
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 150);
-    }
+    });
+}, [roomId]);
+
+  // 發送訊息
+async function handleSend(e: React.FormEvent) {
+  e.preventDefault();
+  if (!msg.trim() || !roomId || !user) return;
+  const insertMsg = {
+    room_id: roomId as string,
+    sender_id: user.id,
+    type: "text",
+    content: msg.trim(),
+  };
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert([insertMsg])
+    .select(
+      `
+      id, room_id, sender_id, type, content, created_at,
+      sender:users(id, name, username, avatar_url)
+      `
+    );
+  if (!error && data && data.length > 0) {
+    const m = data[0];
+    const normalized = {
+      ...m,
+      sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
+    } as ChatMessage;
+    setMessages((prev) => [...prev, normalized]);
+    setMsg("");
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
   }
+}
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
@@ -78,30 +101,74 @@ export default function PrivateChatRoom() {
         <div className="flex-1 min-h-[400px] bg-[#222d44] rounded-xl p-5 overflow-y-auto flex flex-col gap-4">
           {loading && <div className="text-center text-gray-400">載入中…</div>}
           {messages.map((m, i) => (
-            <div key={m.id || i} className={`flex ${m.sender_id === userId ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${m.sender_id === userId
-                ? "bg-[#FFD700] text-[#0d1827] ml-16"
-                : "bg-[#292f45] text-white mr-16"} shadow`}>
+            <div
+              key={m.id || i}
+              className={`flex ${m.sender_id === user?.id ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[70%] px-4 py-2 rounded-2xl ${
+                  m.sender_id === user?.id
+                    ? "bg-[#FFD700] text-[#0d1827] ml-16"
+                    : "bg-[#292f45] text-white mr-16"
+                } shadow`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {m.sender_id !== user?.id && (
+                    <img
+                      src={m.sender?.avatar_url || "/demo/author2.jpg"}
+                      alt="頭像"
+                      className="w-7 h-7 rounded-full"
+                    />
+                  )}
+                  <span className="text-sm font-bold">
+                    {m.sender_id === user?.id ? "我" : m.sender?.name || "對方"}
+                  </span>
+                </div>
                 {m.type === "text" && <span>{m.content}</span>}
-                {m.type === "image" && m.content && <img src={m.content} alt="img" className="rounded-lg max-w-[180px]" />}
-                {m.type === "sticker" && m.content && <img src={m.content} alt="sticker" className="w-14 h-14" />}
-                <div className="text-xs mt-2 opacity-70">{m.sender_id === userId ? userName : (m.sender_name || "對方")}・{m.created_at.slice(11, 16)}</div>
+                {m.type === "image" && m.content && (
+                  <img
+                    src={m.content}
+                    alt="img"
+                    className="rounded-lg max-w-[180px] mt-1"
+                  />
+                )}
+                {m.type === "sticker" && m.content && (
+                  <img
+                    src={m.content}
+                    alt="sticker"
+                    className="w-14 h-14 mt-1"
+                  />
+                )}
+                <div className="text-xs mt-2 opacity-70">
+                  {m.created_at?.slice(11, 16)}
+                </div>
               </div>
             </div>
           ))}
           <div ref={chatEndRef} />
         </div>
         <form className="flex items-center gap-2 mt-5" onSubmit={handleSend}>
-          <button type="button" className="text-[#FFD700]"><FiImage size={24} /></button>
-          <button type="button" className="text-[#FFD700]"><FiMusic size={24} /></button>
-          <button type="button" className="text-[#FFD700]"><FiSmile size={24} /></button>
+          <button type="button" className="text-[#FFD700]">
+            <FiImage size={24} />
+          </button>
+          <button type="button" className="text-[#FFD700]">
+            <FiMusic size={24} />
+          </button>
+          <button type="button" className="text-[#FFD700]">
+            <FiSmile size={24} />
+          </button>
           <input
             className="flex-1 rounded-xl bg-[#222d44] text-white p-3 focus:outline-none"
             value={msg}
-            onChange={e => setMsg(e.target.value)}
+            onChange={(e) => setMsg(e.target.value)}
             placeholder="輸入訊息..."
           />
-          <button type="submit" className="rounded-xl bg-[#FFD700] text-[#0d1827] font-bold px-5 py-2 ml-2 hover:bg-[#ffe366] transition">送出</button>
+          <button
+            type="submit"
+            className="rounded-xl bg-[#FFD700] text-[#0d1827] font-bold px-5 py-2 ml-2 hover:bg-[#ffe366] transition"
+          >
+            送出
+          </button>
         </form>
       </div>
       <Footer />
