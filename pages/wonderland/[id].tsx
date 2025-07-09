@@ -16,11 +16,11 @@ interface Work {
   desc: string;
   cover: string;
   blocks: Block[];
-  imgs: string[];
   author_id: string;
-  likes: number;      // 這裡改為 likes
-  collect: number;
+  likes: number;
   share: number;
+  created_at?: string;
+  tags?: string[];
 }
 
 interface Comment {
@@ -46,8 +46,6 @@ export default function WonderWorkPage() {
   ]);
   const [commentVal, setCommentVal] = useState("");
   const [loading, setLoading] = useState(true);
-
-  // 新增作者名稱欄位
   const [authorName, setAuthorName] = useState<string>("創作者");
 
   // 抓取單篇作品資料
@@ -57,7 +55,7 @@ export default function WonderWorkPage() {
     (async () => {
       const { data, error } = await supabase
         .from("works")
-        .select(`id, type, title, desc, cover, blocks, author_id, likes, collect, share`)  // likes
+        .select(`id, type, title, desc, cover, blocks, author_id, likes, share, created_at, tags`)
         .eq("id", id)
         .eq("type", "wonderland")
         .single();
@@ -68,15 +66,7 @@ export default function WonderWorkPage() {
         return;
       }
 
-      // blocks / imgs
       const blocks: Block[] = Array.isArray(data.blocks) ? data.blocks as Block[] : [];
-      const imgs: string[] =
-        blocks.length > 0
-          ? blocks.filter((b) => b.type === "image" && b.url).map((b) => b.url)
-          : data.cover
-          ? [data.cover]
-          : [];
-
       setWork({
         id: data.id ?? "",
         type: data.type ?? "",
@@ -84,11 +74,11 @@ export default function WonderWorkPage() {
         desc: data.desc ?? "",
         cover: data.cover ?? "",
         blocks: blocks,
-        imgs: imgs,
         author_id: data.author_id ?? "",
-        likes: data.likes ?? 0,    // likes
-        collect: data.collect ?? 0,
+        likes: data.likes ?? 0,
         share: data.share ?? 0,
+        created_at: data.created_at ?? "",
+        tags: data.tags ?? [],
       });
 
       // 撈作者顯示名稱
@@ -112,10 +102,17 @@ export default function WonderWorkPage() {
     })();
   }, [id]);
 
+  // blocks 裡抓所有 image url（支援圖文混排 blocks 格式）
+  const imgs: string[] = work?.blocks
+    ? work.blocks.filter((b) => b.type === "image" && b.url).map((b) => b.url)
+    : work?.cover
+    ? [work.cover]
+    : [];
+
   const nextImg = () =>
-    setImgIdx((i) => (work?.imgs ? (i + 1) % work.imgs.length : 0));
+    setImgIdx((i) => imgs.length ? (i + 1) % imgs.length : 0);
   const prevImg = () =>
-    setImgIdx((i) => (work?.imgs ? (i - 1 + work.imgs.length) % work.imgs.length : 0));
+    setImgIdx((i) => imgs.length ? (i - 1 + imgs.length) % imgs.length : 0);
 
   const submitComment = () => {
     if (!commentVal.trim()) return;
@@ -167,7 +164,6 @@ export default function WonderWorkPage() {
         {/* 作者/訂閱 */}
         <div className="flex gap-2 items-center text-base font-bold mb-3">
           <span>{authorName}</span>
-          {/* 這裡可以判斷作者 verified 狀態，暫略，未來有要加可再串 */}
           <button className="ml-2 px-3 py-1 bg-[#ffd700] rounded-lg text-[#181f32] text-xs font-bold hover:bg-[#fffde4]">訂閱</button>
           <button className="ml-2 px-3 py-1 bg-[#ff5aac] rounded-lg text-white text-xs font-bold hover:bg-[#ffaddc]" onClick={() => setShowDonate(true)}>打賞</button>
           <button className="ml-2 px-3 py-1 border border-[#4dd0e1] rounded-lg text-[#4dd0e1] text-xs font-bold hover:bg-[#133649] hover:text-white"
@@ -178,12 +174,12 @@ export default function WonderWorkPage() {
         <div className="text-lg text-[#fffbdc] mb-5">{work.desc}</div>
         {/* 封面區（多圖橫滑） */}
         <div className="relative w-full h-72 bg-[#181f32] rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-          {work.imgs && work.imgs.length > 0 ? (
-            <img src={work.imgs[imgIdx]} alt="" className="object-contain max-h-72 mx-auto rounded-lg transition-all duration-200" />
+          {imgs && imgs.length > 0 ? (
+            <img src={imgs[imgIdx]} alt="" className="object-contain max-h-72 mx-auto rounded-lg transition-all duration-200" />
           ) : (
             <div className="text-[#ffd700] text-center w-full">（沒有圖片）</div>
           )}
-          {work.imgs && work.imgs.length > 1 && (
+          {imgs && imgs.length > 1 && (
             <>
               <button
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#ffd700cc] rounded-full text-[#181f32] font-bold shadow-lg opacity-80 hover:scale-110"
@@ -196,7 +192,7 @@ export default function WonderWorkPage() {
                 title="下一張"
               >{">"}</button>
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                {work.imgs.map((img, idx) =>
+                {imgs.map((img, idx) =>
                   <div key={idx}
                     className={`h-2 rounded-full ${idx === imgIdx ? "w-8 bg-[#ffd700]" : "w-2 bg-[#ffd70055]"}`} />
                 )}

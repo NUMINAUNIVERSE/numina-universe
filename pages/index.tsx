@@ -7,11 +7,11 @@ interface Work {
   id: string;
   title: string;
   author_id: string;
-  cover_url: string;
+  cover: string;
   type: string;
   desc?: string;
   tags?: string[];
-  like?: number;
+  likes?: number;
 }
 
 interface User {
@@ -35,24 +35,30 @@ export default function HomePage() {
       // 1. 熱門 BlogeBook
       const { data: blogData } = await supabase
         .from("works")
-        .select("id, title, author_id, cover_url, type, desc, tags, like")
+        .select("id, title, author_id, cover, type, desc, tags, likes")
         .eq("type", "blogebook")
-        .order("like", { ascending: false })
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("likes", { ascending: false })
         .limit(6);
 
       // 2. 熱門 WonderLand
       const { data: wlData } = await supabase
         .from("works")
-        .select("id, title, author_id, cover_url, type, desc, tags, like")
+        .select("id, title, author_id, cover, type, desc, tags, likes")
         .eq("type", "wonderland")
-        .order("like", { ascending: false })
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("likes", { ascending: false })
         .limit(6);
 
       // 3. Feed 流（BlogeBook + WonderLand 各3最新）
       const { data: feedData } = await supabase
         .from("works")
-        .select("id, title, author_id, cover_url, type, desc, tags, like")
+        .select("id, title, author_id, cover, type, desc, tags, likes")
         .in("type", ["blogebook", "wonderland"])
+        .eq("is_published", true)
+        .eq("is_deleted", false)
         .order("created_at", { ascending: false })
         .limit(6);
 
@@ -120,7 +126,7 @@ export default function HomePage() {
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${blogIndex * 320}px)` }}>
               {hotBlogeBooks.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover_url} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                  <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
                     {item.title}
                   </div>
@@ -151,7 +157,7 @@ export default function HomePage() {
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${wlIndex * 320}px)` }}>
               {hotWonderLand.map(item => (
                 <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover_url} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                  <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
                   <div className="font-bold text-lg text-white flex items-center">
                     {item.title}
                   </div>
@@ -173,7 +179,7 @@ export default function HomePage() {
           ) : (
             feed.map(item => (
               <div key={item.id} className="bg-[#181f32] rounded-2xl shadow-xl mb-8 p-6 flex flex-col md:flex-row gap-5">
-                <img src={item.cover_url} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
+                <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-bold text-lg text-white">{item.title}</span>
