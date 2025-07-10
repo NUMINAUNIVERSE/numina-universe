@@ -46,7 +46,7 @@ export default function PrivateChatRoom() {
       .order("created_at", { ascending: true })
       .then(({ data, error }) => {
         if (!error && data) {
-          // sender 型別修正（避免 any）
+          // sender 型別修正
           const normalized = data.map((m: unknown) => {
             const msg = m as ChatMessage & {
               sender: ChatMessage["sender"][] | ChatMessage["sender"];
@@ -63,6 +63,44 @@ export default function PrivateChatRoom() {
           chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 150);
       });
+  }, [roomId]);
+
+  // 即時監聽新訊息
+  useEffect(() => {
+    if (!roomId) return;
+    const channel = supabase
+      .channel("chat_messages_room_" + roomId)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomId}` },
+        async (payload) => {
+          const m = payload.new;
+          // 查 sender info
+          const { data } = await supabase
+            .from("users")
+            .select("id, name, username, avatar_url")
+            .eq("id", m.sender_id)
+            .single();
+          // 型別安全組裝
+          const normalized: ChatMessage = {
+            id: m.id,
+            room_id: m.room_id,
+            sender_id: m.sender_id,
+            type: m.type,
+            content: m.content,
+            created_at: m.created_at,
+            sender: data ?? null,
+          };
+          setMessages((prev) => [...prev, normalized]);
+          setTimeout(() => {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 150);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [roomId]);
 
   // 發送訊息

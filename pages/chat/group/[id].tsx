@@ -75,40 +75,41 @@ export default function GroupChatRoom() {
     fetchMessages();
   }, [roomId]);
 
-  // 實時監聽（新訊息自動 push）
+  // 實時監聽新訊息
   useEffect(() => {
     if (!roomId) return;
-    const subscription = supabase
+    const channel = supabase
       .channel("chat_messages_room_" + roomId)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomId}` },
-        (payload) => {
+        async (payload) => {
           const m = payload.new;
-          supabase
+          // 查 sender info
+          const { data } = await supabase
             .from("users")
             .select("id, name, username, avatar_url")
             .eq("id", m.sender_id)
-            .single()
-            .then(({ data }) => {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: m.id,
-                  room_id: m.room_id,
-                  sender_id: m.sender_id,
-                  type: m.type,
-                  content: m.content,
-                  created_at: m.created_at,
-                  sender: data
-                } as ChatMessage
-              ]);
-            });
+            .single();
+          // 型別安全組裝
+          const normalized: ChatMessage = {
+            id: m.id,
+            room_id: m.room_id,
+            sender_id: m.sender_id,
+            type: m.type,
+            content: m.content,
+            created_at: m.created_at,
+            sender: data ?? null,
+          };
+          setMessages((prev) => [...prev, normalized]);
+          setTimeout(() => {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 150);
         }
       )
       .subscribe();
     return () => {
-      if (subscription) supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, [roomId]);
 

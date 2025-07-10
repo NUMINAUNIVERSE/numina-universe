@@ -105,17 +105,42 @@ export default function ChatHome() {
   async function handleCreateDM(target: SimpleUser) {
     if (!user) return;
     setDmError(null);
-    // 1. 檢查是否已有相同DM
-    const { data: dmRooms } = await supabase
-      .from("chat_rooms")
-      .select("id")
-      .eq("type", "dm")
-      .contains("member_ids", [user.id, target.id]);
-    let roomId: string | null = null;
-    if (dmRooms && dmRooms.length > 0) {
-      roomId = dmRooms[0].id;
-    } else {
-      // 2. 建新聊天室
+
+    // 1. 查找已存在的 DM 房（查 chat_rooms + chat_room_members 組合）
+    // 查這兩人是否有共同 dm 房
+    const { data: rooms1 } = await supabase
+      .from("chat_room_members")
+      .select("room_id")
+      .eq("user_id", user.id);
+    const { data: rooms2 } = await supabase
+      .from("chat_room_members")
+      .select("room_id")
+      .eq("user_id", target.id);
+
+    const userRooms = new Set((rooms1 || []).map((r) => r.room_id));
+    const targetRooms = new Set((rooms2 || []).map((r) => r.room_id));
+    let sharedRoomId: string | null = null;
+
+    for (const id of userRooms) {
+      if (targetRooms.has(id)) {
+        // 檢查該房型態
+        const { data: roomData } = await supabase
+          .from("chat_rooms")
+          .select("id,type")
+          .eq("id", id)
+          .eq("type", "dm")
+          .single();
+        if (roomData) {
+          sharedRoomId = id;
+          break;
+        }
+      }
+    }
+
+    let roomId: string | null = sharedRoomId;
+
+    if (!roomId) {
+      // 2. 建新聊天室 (只存 type/name/avatar，不存 member_ids)
       const { data, error } = await supabase
         .from("chat_rooms")
         .insert([
@@ -123,16 +148,18 @@ export default function ChatHome() {
             type: "dm",
             name: null,
             avatar_url: null,
-            member_ids: [user.id, target.id],
+            created_by: user.id,
           },
         ])
-        .select();
-      if (error || !data || !data[0]) {
+        .select()
+        .single();
+
+      if (error || !data || !data.id) {
         setDmError("建立對話失敗，請重試");
         return;
       }
-      roomId = data[0].id;
-      // 3. 分別加入 chat_room_members
+      roomId = data.id;
+      // 3. 插入 chat_room_members
       await supabase.from("chat_room_members").insert([
         { room_id: roomId, user_id: user.id },
         { room_id: roomId, user_id: target.id },
@@ -155,7 +182,7 @@ export default function ChatHome() {
       return;
     }
     setGroupCreating(true);
-    // 1. 建立 chat_rooms 群組
+    // 1. 建立 chat_rooms 群組 (不存 member_ids)
     const { data, error } = await supabase
       .from("chat_rooms")
       .insert([
@@ -163,16 +190,18 @@ export default function ChatHome() {
           type: "group",
           name: groupName.trim(),
           avatar_url: null,
-          member_ids: [user.id, ...selectedUsers],
+          created_by: user.id,
         },
       ])
-      .select();
-    if (error || !data || !data[0]) {
+      .select()
+      .single();
+
+    if (error || !data || !data.id) {
       setGroupError("建立群組失敗，請重試");
       setGroupCreating(false);
       return;
     }
-    const groupId = data[0].id;
+    const groupId = data.id;
     // 2. 插入 chat_room_members
     const allMemberIds = [user.id, ...selectedUsers];
     await supabase.from("chat_room_members").insert(
@@ -191,7 +220,7 @@ export default function ChatHome() {
       <div className="max-w-3xl mx-auto pt-10 pb-16 px-4 w-full flex flex-col">
         {/* 功能區：搜尋用戶 DM、＋新群組 */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-7 gap-3">
-          <div className="flex-1 w-full">
+          <div className="flex-1 w-full relative">
             <input
               className="rounded-xl bg-[#222d44] text-white p-3 w-full"
               placeholder="搜尋用戶聊天（帳號/暱稱）"
