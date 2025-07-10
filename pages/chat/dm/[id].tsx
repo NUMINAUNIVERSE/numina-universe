@@ -21,6 +21,20 @@ interface ChatMessage {
   } | null;
 }
 
+function formatTaiwanTime(utcString: string) {
+  if (!utcString) return "";
+  const date = new Date(utcString);
+  // 轉台灣時間（+8）
+  date.setHours(date.getHours() + 8);
+  // hh:mm 格式
+  return date.toLocaleTimeString("zh-TW", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Taipei",
+  });
+}
+
 export default function PrivateChatRoom() {
   const router = useRouter();
   const { id: roomId } = router.query;
@@ -65,7 +79,7 @@ export default function PrivateChatRoom() {
       });
   }, [roomId]);
 
-  // 即時監聽新訊息
+  // 即時監聽新訊息 (只由 Realtime 插入，不由 handleSend 補)
   useEffect(() => {
     if (!roomId) return;
     const channel = supabase
@@ -81,17 +95,22 @@ export default function PrivateChatRoom() {
             .select("id, name, username, avatar_url")
             .eq("id", m.sender_id)
             .single();
-          // 型別安全組裝
-          const normalized: ChatMessage = {
-            id: m.id,
-            room_id: m.room_id,
-            sender_id: m.sender_id,
-            type: m.type,
-            content: m.content,
-            created_at: m.created_at,
-            sender: data ?? null,
-          };
-          setMessages((prev) => [...prev, normalized]);
+          // 型別安全組裝，避免重複訊息
+          setMessages((prev) => {
+            if (prev.some((item) => item.id === m.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: m.id,
+                room_id: m.room_id,
+                sender_id: m.sender_id,
+                type: m.type,
+                content: m.content,
+                created_at: m.created_at,
+                sender: data ?? null,
+              },
+            ];
+          });
           setTimeout(() => {
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }, 150);
@@ -103,7 +122,7 @@ export default function PrivateChatRoom() {
     };
   }, [roomId]);
 
-  // 發送訊息
+  // 發送訊息（不再自己 setMessages，讓 Realtime 自動補）
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!msg.trim() || !roomId || !user) return;
@@ -113,27 +132,13 @@ export default function PrivateChatRoom() {
       type: "text",
       content: msg.trim(),
     };
-    const { data, error } = await supabase
+    await supabase
       .from("chat_messages")
-      .insert([insertMsg])
-      .select(
-        `
-        id, room_id, sender_id, type, content, created_at,
-        sender:users(id, name, username, avatar_url)
-        `
-      );
-    if (!error && data && data.length > 0) {
-      const m = data[0];
-      const normalized = {
-        ...m,
-        sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
-      } as ChatMessage;
-      setMessages((prev) => [...prev, normalized]);
-      setMsg("");
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 150);
-    }
+      .insert([insertMsg]);
+    setMsg("");
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
   }
 
   return (
@@ -183,7 +188,7 @@ export default function PrivateChatRoom() {
                   />
                 )}
                 <div className="text-xs mt-2 opacity-70">
-                  {m.created_at?.slice(11, 16)}
+                  {formatTaiwanTime(m.created_at)}
                 </div>
               </div>
             </div>
