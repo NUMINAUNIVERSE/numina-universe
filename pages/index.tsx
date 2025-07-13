@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
+import Link from "next/link";
 
 interface Work {
   id: string;
@@ -99,6 +100,13 @@ export default function HomePage() {
   const scrollBlog = (dir: number) => setBlogIndex((prev) => Math.max(0, Math.min(prev + dir, hotBlogeBooks.length - 1)));
   const scrollWL = (dir: number) => setWLIndex((prev) => Math.max(0, Math.min(prev + dir, hotWonderLand.length - 1)));
 
+  // 取得詳細頁連結
+  function getWorkLink(item: Work) {
+    if (item.type === "blogebook") return `/blogebook/${item.id}`;
+    if (item.type === "wonderland") return `/wonderland/${item.id}`;
+    return "#";
+  }
+
   return (
     <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
       <Navbar />
@@ -125,17 +133,19 @@ export default function HomePage() {
           <div className="overflow-hidden flex gap-4">
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${blogIndex * 320}px)` }}>
               {hotBlogeBooks.map(item => (
-                <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
-                  <div className="font-bold text-lg text-white flex items-center">
-                    {item.title}
+                <Link key={item.id} href={getWorkLink(item)}>
+                  <div className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg cursor-pointer hover:scale-105 transition">
+                    <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                    <div className="font-bold text-lg text-white flex items-center">
+                      {item.title}
+                    </div>
+                    <div className="flex items-center gap-2 text-[#ffd700] text-sm">
+                      <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                      <span>{item.author?.name ?? "創作者"}</span>
+                      <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[#ffd700] text-sm">
-                    <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
-                    <span>{item.author?.name ?? "創作者"}</span>
-                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -156,17 +166,19 @@ export default function HomePage() {
           <div className="overflow-hidden flex gap-4">
             <div className="flex transition-all duration-300" style={{ transform: `translateX(-${wlIndex * 320}px)` }}>
               {hotWonderLand.map(item => (
-                <div key={item.id} className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg">
-                  <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
-                  <div className="font-bold text-lg text-white flex items-center">
-                    {item.title}
+                <Link key={item.id} href={getWorkLink(item)}>
+                  <div className="w-80 bg-[#181f32] rounded-2xl p-4 mr-5 shadow-lg cursor-pointer hover:scale-105 transition">
+                    <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full h-44 object-cover rounded-xl mb-3" />
+                    <div className="font-bold text-lg text-white flex items-center">
+                      {item.title}
+                    </div>
+                    <div className="flex items-center gap-2 text-[#ffd700] text-sm">
+                      <img src={item.author?.avatar_url ?? "/demo/author2.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                      <span>{item.author?.name ?? "創作者"}</span>
+                      <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[#ffd700] text-sm">
-                    <img src={item.author?.avatar_url ?? "/demo/author2.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
-                    <span>{item.author?.name ?? "創作者"}</span>
-                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -178,28 +190,30 @@ export default function HomePage() {
             <div className="text-center text-[#ffd700] font-bold py-10">載入中…</div>
           ) : (
             feed.map(item => (
-              <div key={item.id} className="bg-[#181f32] rounded-2xl shadow-xl mb-8 p-6 flex flex-col md:flex-row gap-5">
-                <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
-                <div className="flex flex-col flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-lg text-white">{item.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#ffd700] text-sm mb-1">
-                    <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
-                    <span>{item.author?.name ?? "創作者"}</span>
-                    <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
-                  </div>
-                  <p className="text-white/85 mb-2">{item.desc?.slice(0, 56) || "精采內容描述片段..."}</p>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {(item.tags || []).map((tag, i) => (
-                      <span key={i} className="bg-[#ffd70033] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold">#{tag}</span>
-                    ))}
-                  </div>
-                  <div className="flex gap-4 items-center mt-auto">
-                    <button className="bg-[#ffd700] text-[#181f32] font-bold px-5 py-2 rounded-xl shadow hover:scale-105 transition">訂閱作者</button>
+              <Link key={item.id} href={getWorkLink(item)}>
+                <div className="bg-[#181f32] rounded-2xl shadow-xl mb-8 p-6 flex flex-col md:flex-row gap-5 cursor-pointer hover:scale-105 transition">
+                  <img src={item.cover || "/demo/cover.jpg"} alt={item.title} className="w-full md:w-52 h-40 object-cover rounded-xl" />
+                  <div className="flex flex-col flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-lg text-white">{item.title}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[#ffd700] text-sm mb-1">
+                      <img src={item.author?.avatar_url ?? "/demo/author1.jpg"} className="w-6 h-6 rounded-full" alt="作者頭像" />
+                      <span>{item.author?.name ?? "創作者"}</span>
+                      <span className="ml-1 text-xs text-[#ffd700]">@{item.author?.username ?? "unknown"}</span>
+                    </div>
+                    <p className="text-white/85 mb-2">{item.desc?.slice(0, 56) || "精采內容描述片段..."}</p>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {(item.tags || []).map((tag, i) => (
+                        <span key={i} className="bg-[#ffd70033] text-[#ffd700] px-3 py-1 rounded-2xl text-xs font-bold">#{tag}</span>
+                      ))}
+                    </div>
+                    <div className="flex gap-4 items-center mt-auto">
+                      <button className="bg-[#ffd700] text-[#181f32] font-bold px-5 py-2 rounded-xl shadow hover:scale-105 transition">訂閱作者</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

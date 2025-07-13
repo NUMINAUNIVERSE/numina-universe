@@ -21,6 +21,17 @@ interface ChatMessage {
   } | null;
 }
 
+// 顯示每個用戶本地時區的訊息時間
+function formatLocalTime(utcString: string) {
+  if (!utcString) return "";
+  const date = new Date(utcString);
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export default function GroupChatRoom() {
   const router = useRouter();
   const { id: roomId } = router.query;
@@ -75,7 +86,7 @@ export default function GroupChatRoom() {
     fetchMessages();
   }, [roomId]);
 
-  // 實時監聽新訊息
+  // 實時監聽新訊息（避免重複訊息）
   useEffect(() => {
     if (!roomId) return;
     const channel = supabase
@@ -85,13 +96,11 @@ export default function GroupChatRoom() {
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomId}` },
         async (payload) => {
           const m = payload.new;
-          // 查 sender info
           const { data } = await supabase
             .from("users")
             .select("id, name, username, avatar_url")
             .eq("id", m.sender_id)
             .single();
-          // 型別安全組裝
           const normalized: ChatMessage = {
             id: m.id,
             room_id: m.room_id,
@@ -101,7 +110,11 @@ export default function GroupChatRoom() {
             created_at: m.created_at,
             sender: data ?? null,
           };
-          setMessages((prev) => [...prev, normalized]);
+          setMessages((prev) => {
+            // 若已存在就不再 push，避免重複
+            if (prev.some((item) => item.id === m.id)) return prev;
+            return [...prev, normalized];
+          });
           setTimeout(() => {
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }, 150);
@@ -118,7 +131,7 @@ export default function GroupChatRoom() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 發送訊息
+  // 發送訊息（讓 Realtime 自動補進，不自己 setMessages）
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!msg.trim() || !user || !roomId) return;
@@ -128,27 +141,11 @@ export default function GroupChatRoom() {
       type: "text",
       content: msg.trim(),
     };
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .insert([insertMsg])
-      .select(
-        `
-        id, room_id, sender_id, type, content, created_at,
-        sender:users(id, name, username, avatar_url)
-        `
-      );
-    if (!error && data && data.length > 0) {
-      const m = data[0];
-      const normalized = {
-        ...m,
-        sender: Array.isArray(m.sender) ? m.sender[0] : m.sender,
-      } as ChatMessage;
-      setMessages((prev) => [...prev, normalized]);
-      setMsg("");
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 150);
-    }
+    await supabase.from("chat_messages").insert([insertMsg]);
+    setMsg("");
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
   }
 
   return (
@@ -192,7 +189,7 @@ export default function GroupChatRoom() {
                   />
                 )}
                 <div className="text-xs mt-2 opacity-70">
-                  {m.created_at?.slice(11, 16)}
+                  {formatLocalTime(m.created_at)}
                 </div>
               </div>
             </div>

@@ -21,17 +21,14 @@ interface ChatMessage {
   } | null;
 }
 
-function formatTaiwanTime(utcString: string) {
+// 顯示每個用戶本地時區的訊息時間
+function formatLocalTime(utcString: string) {
   if (!utcString) return "";
   const date = new Date(utcString);
-  // 轉台灣時間（+8）
-  date.setHours(date.getHours() + 8);
-  // hh:mm 格式
-  return date.toLocaleTimeString("zh-TW", {
+  return date.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "Asia/Taipei",
   });
 }
 
@@ -188,7 +185,7 @@ export default function PrivateChatRoom() {
                   />
                 )}
                 <div className="text-xs mt-2 opacity-70">
-                  {formatTaiwanTime(m.created_at)}
+                  {formatLocalTime(m.created_at)}
                 </div>
               </div>
             </div>

@@ -4,8 +4,8 @@ import Footer from "@/components/Footer";
 import { FiMenu, FiX, FiUpload } from "react-icons/fi";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
-// 側邊選單
 const hamburgerMenu = [
   { label: "過去訂單", link: "/profile/orders" },
   { label: "收益中心", link: "/profile/income" },
@@ -26,7 +26,6 @@ const tabList = [
   { label: "我的貼圖", key: "stickers" }
 ];
 
-// 型別定義
 type UserProfile = {
   id: string;
   name: string;
@@ -44,6 +43,7 @@ type Work = {
   cover: string;
   title: string;
   desc: string;
+  type: string; // 新增 type，用於連結
 };
 
 type Sticker = {
@@ -59,6 +59,7 @@ type FavoriteRow = {
     cover: string;
     title: string;
     desc: string;
+    type?: string;
   }[]; // array!
 };
 
@@ -75,7 +76,12 @@ export default function ProfilePage() {
   const coverInput = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
-  // 取得使用者基本資料
+  function getWorkLink(item: Work) {
+    if (item.type === "blogebook") return `/blogebook/${item.id}`;
+    if (item.type === "wonderland") return `/wonderland/${item.id}`;
+    return "#";
+  }
+
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -106,14 +112,13 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // 取得作品、收藏、貼圖
   useEffect(() => {
     const fetchWorks = async () => {
       if (!profile) return;
       // BlogeBook
       const { data: blogs } = await supabase
         .from("works")
-        .select("id, cover, title, desc")
+        .select("id, cover, title, desc, type")
         .eq("author_id", profile.id)
         .eq("type", "blogebook")
         .order("created_at", { ascending: false });
@@ -121,13 +126,14 @@ export default function ProfilePage() {
         id: b.id || "",
         cover: b.cover || "/cover-demo.jpg",
         title: b.title || "",
-        desc: b.desc || ""
+        desc: b.desc || "",
+        type: "blogebook"
       })) : []);
 
       // WonderLand
       const { data: wonders } = await supabase
         .from("works")
-        .select("id, cover, title, desc")
+        .select("id, cover, title, desc, type")
         .eq("author_id", profile.id)
         .eq("type", "wonderland")
         .order("created_at", { ascending: false });
@@ -135,32 +141,33 @@ export default function ProfilePage() {
         id: w.id || "",
         cover: w.cover || "/cover-demo.jpg",
         title: w.title || "",
-        desc: w.desc || ""
+        desc: w.desc || "",
+        type: "wonderland"
       })) : []);
 
-// 收藏（單對一/防呆處理）
+// 收藏
 const { data: favs } = await supabase
   .from("favorites")
-  .select("work_id, works(id, cover, title, desc)")
+  .select("work_id, works(id, cover, title, desc, type)")
   .eq("user_id", profile.id)
   .order("created_at", { ascending: false });
 
-setFavorites(
-  Array.isArray(favs)
-    ? favs
-        .map((f: FavoriteRow) =>
-          Array.isArray(f.works) && f.works[0]
-            ? {
-                id: f.works[0].id || "",
-                cover: f.works[0].cover || "/cover-demo.jpg",
-                title: f.works[0].title || "",
-                desc: f.works[0].desc || ""
-              }
-            : null
-        )
-        .filter((w): w is Work => !!w)
-    : []
-);
+const favoriteWorks: Work[] = Array.isArray(favs)
+  ? favs
+      .map((f: FavoriteRow) =>
+        Array.isArray(f.works) && f.works[0]
+          ? {
+              id: f.works[0].id || "",
+              cover: f.works[0].cover || "/cover-demo.jpg",
+              title: f.works[0].title || "",
+              desc: f.works[0].desc || "",
+              type: f.works[0].type || "blogebook",
+            }
+          : undefined // 直接 undefined
+      )
+      .filter((w): w is Work => !!w)
+  : [];
+setFavorites(favoriteWorks);
 
       // 貼圖
       const { data: stickersData } = await supabase
@@ -303,11 +310,13 @@ setFavorites(
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {blogebooks.length === 0 && <div className="text-gray-400">暫無作品</div>}
               {blogebooks.map((item) => (
-                <div key={item.id} className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col">
-                  <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
-                  <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
-                  <div className="text-gray-100">{item.desc}</div>
-                </div>
+                <Link key={item.id} href={getWorkLink(item)}>
+                  <div className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col cursor-pointer hover:scale-105 transition">
+                    <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
+                    <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
+                    <div className="text-gray-100">{item.desc}</div>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -315,11 +324,13 @@ setFavorites(
             <div className="grid grid-cols-2 gap-6">
               {wonderlands.length === 0 && <div className="text-gray-400">暫無作品</div>}
               {wonderlands.map((item) => (
-                <div key={item.id} className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col">
-                  <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
-                  <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
-                  <div className="text-gray-100">{item.desc}</div>
-                </div>
+                <Link key={item.id} href={getWorkLink(item)}>
+                  <div className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col cursor-pointer hover:scale-105 transition">
+                    <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
+                    <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
+                    <div className="text-gray-100">{item.desc}</div>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -327,11 +338,13 @@ setFavorites(
             <div className="grid grid-cols-2 gap-6">
               {favorites.length === 0 && <div className="text-gray-400">暫無收藏</div>}
               {favorites.map((item) => (
-                <div key={item.id} className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col">
-                  <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
-                  <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
-                  <div className="text-gray-100">{item.desc}</div>
-                </div>
+                <Link key={item.id} href={getWorkLink(item)}>
+                  <div className="bg-[#16213c] rounded-xl shadow-lg border-2 border-[#FFD700]/30 p-5 flex flex-col cursor-pointer hover:scale-105 transition">
+                    <img src={item.cover} alt={item.title} className="rounded-xl mb-3 object-cover w-full h-48" />
+                    <div className="text-[#FFD700] font-bold text-xl mb-1">{item.title}</div>
+                    <div className="text-gray-100">{item.desc}</div>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
