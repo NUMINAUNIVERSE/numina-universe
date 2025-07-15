@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { createClient } from "@supabase/supabase-js";
 
 // Supabase 設定
@@ -24,10 +25,42 @@ export default function AdminDashboard() {
     { title: "作品總數", value: 0, color: "#FFD700" },
     { title: "待審內容", value: 0, color: "#F44336" }
   ]);
-
   const [recentReview, setRecentReview] = useState<ReviewRow[]>([]);
 
+  // 加入 admin 權限檢查
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
+
   useEffect(() => {
+    async function checkAdmin() {
+      // 1. 取得登入者資訊
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+      // 2. 查 users 資料表的 role 欄位
+      const { data } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      // 3. 只有 admin 可進入，否則導回首頁
+      if (data?.role === "admin") {
+        setIsAdmin(true);
+      } else {
+        router.replace("/");
+      }
+      setLoading(false);
+    }
+    checkAdmin();
+  }, [router]);
+
+  useEffect(() => {
+    if (!isAdmin) return; // 僅 admin 才載入數據
+
     // 串接後台總覽數據
     const fetchStats = async () => {
       // 用戶總數
@@ -82,7 +115,11 @@ export default function AdminDashboard() {
 
     fetchStats();
     fetchReview();
-  }, []);
+  }, [isAdmin]);
+
+  // 只有 admin 才能看到，未驗證完成前 loading
+  if (loading) return <div className="text-center py-24">載入中...</div>;
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
