@@ -6,39 +6,52 @@ import type { User } from "@supabase/supabase-js";
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   useEffect(() => {
-    // 初始化偵測登入狀態
-    supabase.auth.getUser().then(async ({ data }) => {
-      setUser(data?.user || null);
+    let mounted = true;
 
-      if (data?.user) {
-        // 查 users 表的 role 欄位
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", data.user.id)
-          .single();
-        setIsAdmin(userData?.role === "admin");
-      } else {
-        setIsAdmin(false);
-      }
-    });
+    // 初始化偵測登入狀態
+    supabase.auth
+      .getUser()
+      .then(async ({ data, error }) => {
+        if (!mounted) return;
+        setUser(data?.user || null);
+
+        if (data?.user) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", data.user.id)
+            .single();
+          setIsAdmin(userData?.role === "admin");
+        } else {
+          setIsAdmin(false);
+        }
+        setIsLoadingUser(false);
+      })
+      .catch(() => setIsLoadingUser(false));
+
     // 監聽登入/登出狀態改變
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        setIsAdmin(userData?.role === "admin");
-      } else {
-        setIsAdmin(false);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+          setIsAdmin(userData?.role === "admin");
+        } else {
+          setIsAdmin(false);
+        }
+        setIsLoadingUser(false);
       }
-    });
+    );
     return () => {
+      mounted = false;
       listener?.subscription.unsubscribe();
     };
   }, []);
@@ -71,17 +84,18 @@ export default function Navbar() {
           會員中心
         </Link>
         {/* 僅 admin 登入時顯示「管理後台」 */}
-        {user && isAdmin && (
+        {!isLoadingUser && user && isAdmin && (
           <Link href="/admin" className="text-[#FFD700] hover:underline">
             管理後台
           </Link>
         )}
         {/* 僅未登入時才顯示登入按鈕 */}
-        {!user && (
+        {!isLoadingUser && !user && (
           <Link href="/login" className="text-[#d4af37] hover:text-[#ffd700]">
             登入
           </Link>
         )}
+        {/* 載入中時不顯示登入按鈕 */}
       </div>
     </nav>
   );
