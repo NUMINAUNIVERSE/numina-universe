@@ -14,7 +14,7 @@ export default function Navbar() {
     // 初始化偵測登入狀態
     supabase.auth
       .getUser()
-      .then(async ({ data, error }) => {
+      .then(async ({ data }) => {
         if (!mounted) return;
         setUser(data?.user || null);
 
