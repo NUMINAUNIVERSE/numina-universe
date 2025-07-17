@@ -24,7 +24,7 @@ interface User {
 }
 
 export default function HomePage() {
-  const { user, isLoadingUser } = useUser(); // ⭐ 取得 user 狀態
+  const { isLoadingUser } = useUser(); // ⭐ 取得 user 狀態
 
   const [hotBlogeBooks, setHotBlogeBooks] = useState<(Work & { author?: User })[]>([]);
   const [hotWonderLand, setHotWonderLand] = useState<(Work & { author?: User })[]>([]);

@@ -9,7 +9,7 @@ type User = {
   username?: string;
   role?: string;
   is_verified?: boolean;
-  [key: string]: any;
+  // 可以依你DB再加
 };
 
 interface UserContextProps {
@@ -19,7 +19,6 @@ interface UserContextProps {
   refreshUser: () => Promise<void>;
 }
 
-// 建立 Context
 const UserContext = createContext<UserContextProps>({
   user: null,
   isLoadingUser: true,
@@ -27,17 +26,14 @@ const UserContext = createContext<UserContextProps>({
   refreshUser: async () => {},
 });
 
-// Provider
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
 
-  // 取得使用者
   const fetchUser = async () => {
     setIsLoadingUser(true);
     const { data } = await supabase.auth.getUser();
     if (data?.user) {
-      // 進一步抓DB欄位（建議可以加這一段，未來延伸更完整 user info）
       const { data: userProfile } = await supabase
         .from("users")
         .select("*")
@@ -57,14 +53,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchUser();
-    // 監聽登入登出
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       fetchUser();
     });
     return () => {
       listener?.subscription.unsubscribe();
     };
-    // eslint-disable-next-line
   }, []);
 
   return (
@@ -81,7 +75,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// 共用 hook
 export function useUser() {
   return useContext(UserContext);
 }

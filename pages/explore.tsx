@@ -34,7 +34,7 @@ const tabList = [
 const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
 
 export default function Explore() {
-  const { user, isLoadingUser } = useUser(); // ⭐️ 取 user 狀態
+  const { isLoadingUser } = useUser(); // ⭐️ 取 user 狀態
 
   const [tab, setTab] = useState("blogebook");
   const [tag, setTag] = useState("全部");
