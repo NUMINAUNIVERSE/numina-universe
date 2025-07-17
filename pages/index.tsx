@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
+import { useUser } from "@/lib/UserContext"; // ⭐ 加入 useUser
 
 interface Work {
   id: string;
@@ -23,6 +24,8 @@ interface User {
 }
 
 export default function HomePage() {
+  const { user, isLoadingUser } = useUser(); // ⭐ 取得 user 狀態
+
   const [hotBlogeBooks, setHotBlogeBooks] = useState<(Work & { author?: User })[]>([]);
   const [hotWonderLand, setHotWonderLand] = useState<(Work & { author?: User })[]>([]);
   const [feed, setFeed] = useState<(Work & { author?: User })[]>([]);
@@ -105,6 +108,17 @@ export default function HomePage() {
     if (item.type === "blogebook") return `/blogebook/${item.id}`;
     if (item.type === "wonderland") return `/wonderland/${item.id}`;
     return "#";
+  }
+
+  // ⭐⭐ 加入 user 載入等待畫面（建議這樣做，最國際級）
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-[#0d1a2d] text-white flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex justify-center items-center text-[#ffd700] text-xl font-bold">載入中…</div>
+        <Footer />
+      </div>
+    );
   }
 
   return (

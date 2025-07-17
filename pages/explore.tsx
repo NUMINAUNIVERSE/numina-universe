@@ -3,7 +3,8 @@ import Footer from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
-import Link from "next/link"; // ← 新增
+import Link from "next/link";
+import { useUser } from "@/lib/UserContext"; // ⭐️ 新增 useUser
 
 // 根據 NUMINA UNIVERSE 20250703 Schema
 interface ExploreWork {
@@ -33,6 +34,8 @@ const tabList = [
 const tags = ["全部", "科普", "小說", "插畫", "漫畫", "散文", "創投", "生活", "心靈"];
 
 export default function Explore() {
+  const { user, isLoadingUser } = useUser(); // ⭐️ 取 user 狀態
+
   const [tab, setTab] = useState("blogebook");
   const [tag, setTag] = useState("全部");
   const [search, setSearch] = useState("");
@@ -93,6 +96,17 @@ export default function Explore() {
     }
     fetchData();
   }, [tab, tag, search]);
+
+  // ⭐️ user loading 狀態先 return loading 畫面（維持和首頁一樣國際級體驗）
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">
+        <Navbar />
+        <div className="flex-1 flex justify-center items-center text-[#FFD700] text-xl font-bold">載入中…</div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0d1827] text-white flex flex-col font-sans">

@@ -17,6 +17,7 @@ export default function Navbar() {
       .then(async ({ data }) => {
         if (!mounted) return;
         setUser(data?.user || null);
+        console.log('Navbar user', data?.user || null); // <-- 這裡追蹤 user
 
         if (data?.user) {
           const { data: userData } = await supabase
@@ -37,6 +38,8 @@ export default function Navbar() {
       async (_event, session) => {
         if (!mounted) return;
         setUser(session?.user ?? null);
+        console.log('Navbar user', session?.user ?? null); // <-- 這裡追蹤 user
+
         if (session?.user) {
           const { data: userData } = await supabase
             .from("users")
