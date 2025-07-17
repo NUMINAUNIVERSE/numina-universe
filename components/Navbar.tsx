@@ -1,63 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import type { User } from "@supabase/supabase-js";
+import { useUser } from "@/lib/UserContext";
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-
-    // 初始化偵測登入狀態
-    supabase.auth
-      .getUser()
-      .then(async ({ data }) => {
-        if (!mounted) return;
-        setUser(data?.user || null);
-        console.log('Navbar user', data?.user || null); // <-- 這裡追蹤 user
-
-        if (data?.user) {
-          const { data: userData } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", data.user.id)
-            .single();
-          setIsAdmin(userData?.role === "admin");
-        } else {
-          setIsAdmin(false);
-        }
-        setIsLoadingUser(false);
-      })
-      .catch(() => setIsLoadingUser(false));
-
-    // 監聽登入/登出狀態改變
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!mounted) return;
-        setUser(session?.user ?? null);
-        console.log('Navbar user', session?.user ?? null); // <-- 這裡追蹤 user
-
-        if (session?.user) {
-          const { data: userData } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-          setIsAdmin(userData?.role === "admin");
-        } else {
-          setIsAdmin(false);
-        }
-        setIsLoadingUser(false);
-      }
-    );
-    return () => {
-      mounted = false;
-      listener?.subscription.unsubscribe();
-    };
-  }, []);
+  const { user, isLoadingUser } = useUser(); // ← 直接用 context
+  // 假設你有 user.role，可以這樣判斷 isAdmin
+  const isAdmin = user?.role === "admin";
 
   return (
     <nav className="flex items-center justify-between h-16 px-8 bg-[#0d1a2d] border-b-2 border-[#ffd700]">
