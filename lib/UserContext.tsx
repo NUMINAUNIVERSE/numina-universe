@@ -9,7 +9,7 @@ type User = {
   username?: string;
   role?: string;
   is_verified?: boolean;
-  // 可以依你DB再加
+  // 可依 DB 再加
 };
 
 interface UserContextProps {
@@ -32,20 +32,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUser = async () => {
     setIsLoadingUser(true);
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      const { data: userProfile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
-      setUser({
-        id: data.user.id,
-        email: data.user.email,
-        ...data.user.user_metadata,
-        ...userProfile,
-      });
-    } else {
+    try {
+      // Step1: 抓 supabase auth
+      const { data, error: authError } = await supabase.auth.getUser();
+      console.log("[UserContext] Step1: supabase.auth.getUser result", { data, authError });
+
+      if (data?.user) {
+        // Step2: 查 users profile
+        const { data: userProfile, error: profileError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", data.user.id)
+          .single();
+        console.log("[UserContext] Step2: supabase.from(users) result", { userProfile, profileError });
+
+        // Step3: 結果合併
+        const mergedUser = {
+          id: data.user.id,
+          email: data.user.email,
+          ...data.user.user_metadata,
+          ...(userProfile ?? {}),
+        };
+        console.log("[UserContext] Step3: mergedUser", mergedUser);
+
+        setUser(mergedUser);
+      } else {
+        console.log("[UserContext] Step1: No auth user, setUser(null)");
+        setUser(null);
+      }
+    } catch (e) {
+      console.error("[UserContext] fetchUser error", e);
       setUser(null);
     }
     setIsLoadingUser(false);
